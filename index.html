@@ -1,0 +1,4457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Sniper: El Francotirador de Bugs | Inspección en Vivo</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='22' y1='12' x2='18' y2='12'/><line x1='6' y1='12' x2='2' y2='12'/><line x1='12' y1='6' x2='12' y2='2'/><line x1='12' y1='22' x2='12' y2='18'/></svg>">
+  <style>
+    /* ==========================================================================
+       VARIABLES DE COLOR Y DISEÑO (CHARCOAL & SLATE / ESTILO TERMINAL PROFESIONAL)
+       ========================================================================== */
+    :root {
+      --bg-body: #0b0f19;
+      --bg-surface: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-element: #243247;
+      --border-subtle: #334155;
+      --border-accent: #475569;
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --cyan-accent: #38bdf8;
+      --emerald-accent: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.25);
+      --coral-accent: #ef4444;
+      --coral-glow: rgba(239, 68, 68, 0.25);
+      --amber-accent: #f59e0b;
+      --purple-accent: #a855f7;
+
+      --team-2: #38bdf8;
+      --team-3: #a855f7;
+      --team-4: #f59e0b;
+
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-elevation: 0 10px 30px -5px rgba(0, 0, 0, 0.7);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-body);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* Iconos SVG inline */
+    .icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke-width: 2;
+      stroke: currentColor;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    .icon-lg { width: 1.65rem; height: 1.65rem; }
+    .icon-xl { width: 3.25rem; height: 3.25rem; }
+
+    /* ==========================================================================
+       CABECERA DE CONTROL (LAYOUT 3 COLUMNAS SIMÉTRICO)
+       ========================================================================== */
+    header {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.65rem 2rem;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    /* Columna 1: Relevo en Vivo */
+    .relay-banner {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 0.75rem;
+      justify-self: start;
+    }
+    .badge-round {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      padding: 0.4rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .badge-round span {
+      color: var(--cyan-accent);
+    }
+
+    .badge-team-relay {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.4rem 1.1rem;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+      transition: all 0.25s ease;
+    }
+    .team-2-badge {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: var(--team-2);
+    }
+    .team-3-badge {
+      background: rgba(168, 85, 247, 0.12);
+      border-color: rgba(168, 85, 247, 0.35);
+      color: var(--team-3);
+    }
+    .team-4-badge {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: var(--team-4);
+    }
+
+    .badge-member {
+      background: #111827;
+      border: 1px solid var(--border-subtle);
+      padding: 0.4rem 0.9rem;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .badge-member .icon {
+      color: var(--cyan-accent);
+    }
+
+    /* Columna 2: Marcador Central de los 3 Equipos */
+    .scoreboard {
+      display: flex;
+      gap: 0.75rem;
+      justify-self: center;
+    }
+    .team-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .team-card.active-turn {
+      border-color: currentColor;
+      box-shadow: 0 0 14px -2px currentColor;
+    }
+    .team-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .team-pts {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      min-width: 2.2rem;
+      text-align: right;
+    }
+    .team-modifiers {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .btn-mod {
+      background: var(--bg-element);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      width: 16px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 10px;
+      line-height: 1;
+      transition: all 0.15s ease;
+    }
+    .btn-mod:hover {
+      background: var(--border-subtle);
+      color: var(--text-main);
+    }
+
+    /* Columna 3: Temporizador y Utilidades */
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      justify-self: end;
+    }
+    .timer-container {
+      position: relative;
+      width: 54px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .timer-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+    .timer-circle-bg {
+      fill: none;
+      stroke: var(--bg-panel);
+      stroke-width: 4.5;
+    }
+    .timer-circle-progress {
+      fill: none;
+      stroke: var(--cyan-accent);
+      stroke-width: 4.5;
+      stroke-linecap: round;
+      stroke-dasharray: 157;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+    }
+    .timer-digits {
+      position: absolute;
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .timer-container.warning .timer-circle-progress {
+      stroke: var(--amber-accent);
+    }
+    .timer-container.critical .timer-circle-progress {
+      stroke: var(--coral-accent);
+      animation: pulse-ring 1s infinite;
+    }
+
+    .btn-action {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 0.5rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .btn-action:hover {
+      border-color: var(--cyan-accent);
+      color: var(--text-main);
+    }
+
+    /* Banner Comodín Toast */
+    .comodin-toast {
+      position: fixed;
+      top: 4.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(245, 158, 11, 0.95);
+      color: #0b0f19;
+      padding: 0.5rem 1.25rem;
+      border-radius: 9999px;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .comodin-toast.active {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ==========================================================================
+       CONTENIDO PRINCIPAL: IDE CODE SNIPER INTERACTIVO
+       ========================================================================== */
+    main {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1rem 2rem 1.4rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    /* IDE Mockup Window */
+    .ide-window {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-elevation);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ide-titlebar {
+      background: #0d1322;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 38px;
+    }
+    .ide-controls {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .ide-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .dot-close { background: #ef4444; opacity: 0.85; }
+    .dot-min { background: #f59e0b; opacity: 0.85; }
+    .dot-max { background: #10b981; opacity: 0.85; }
+
+    .ide-tab {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-surface);
+      padding: 0.25rem 0.85rem;
+      border-radius: 4px 4px 0 0;
+      border-top: 2px solid var(--cyan-accent);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+    .ide-mode-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--emerald-accent);
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.2rem 0.65rem;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.05em;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .ide-content {
+      padding: 1.2rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Panel Superior de Diagnóstico / Consola */
+    .diagnosis-panel {
+      background: #070a12;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      border-left: 4px solid var(--cyan-accent);
+    }
+    .diagnosis-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+    .diag-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .diag-label.obj {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--cyan-accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .diag-label.bug {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--coral-accent);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .diag-text {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    /* Editor de Código Interactivo con Mira Telescópica */
+    .editor-wrapper {
+      position: relative;
+      background: #070a12;
+      border: 1px solid #1e293b;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .editor-header-hint {
+      background: #0b1120;
+      border-bottom: 1px solid #1e293b;
+      padding: 0.45rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .editor-header-hint .hint-attempts {
+      color: var(--amber-accent);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .code-lines-list {
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      line-height: 1.6;
+    }
+
+    .code-row {
+      display: flex;
+      align-items: center;
+      padding: 0.35rem 0.75rem;
+      cursor: crosshair;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+
+    .code-row:hover:not(.locked):not(.disabled) {
+      background: rgba(56, 189, 248, 0.08);
+      border-left-color: var(--cyan-accent);
+    }
+
+    .code-row .reticle-icon {
+      opacity: 0;
+      margin-right: 0.5rem;
+      color: var(--cyan-accent);
+      transition: opacity 0.15s ease;
+      flex-shrink: 0;
+    }
+    .code-row:hover:not(.locked):not(.disabled) .reticle-icon {
+      opacity: 1;
+    }
+
+    .code-row .line-num {
+      width: 2.2rem;
+      text-align: right;
+      padding-right: 1.25rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .code-row .line-text {
+      flex: 1;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+    }
+
+    .code-row .line-badge-feedback {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-sm);
+      margin-left: 1rem;
+      display: none;
+    }
+
+    /* Estado: Falso Positivo (Línea sana disparada) */
+    .code-row.false-positive {
+      background: rgba(239, 68, 68, 0.15) !important;
+      border-left-color: var(--coral-accent) !important;
+      animation: shake 0.4s ease;
+    }
+    .code-row.false-positive .line-badge-feedback {
+      display: inline-block;
+      background: var(--coral-accent);
+      color: #0b0f19;
+    }
+
+    /* Estado: Bug Detectado (Target Locked) */
+    .code-row.target-locked {
+      background: rgba(16, 185, 129, 0.18) !important;
+      border-left-color: var(--emerald-accent) !important;
+      box-shadow: inset 0 0 15px rgba(16, 185, 129, 0.2);
+    }
+    .code-row.target-locked .line-badge-feedback {
+      display: inline-block;
+      background: var(--emerald-accent);
+      color: #022013;
+      animation: pulse-glow 1.5s infinite;
+    }
+
+    /* Deshabilitar interacción tras terminar */
+    .code-row.disabled {
+      cursor: default;
+    }
+
+    /* Sintaxis de Pseudocódigo */
+    .token-kw { color: #38bdf8; font-weight: 700; }
+    .token-fn { color: #60a5fa; font-weight: 600; }
+    .token-str { color: #34d399; }
+    .token-num { color: #fbbf24; }
+    .token-op { color: #f43f5e; font-weight: 700; }
+    .token-comment { color: #64748b; font-style: italic; }
+
+    /* ==========================================================================
+       FASE 2: PANEL DE CORRECCIÓN QUIRÚRGICA
+       ========================================================================== */
+    .surgical-panel {
+      background: #0f172a;
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-md);
+      padding: 1.15rem 1.4rem;
+      display: none;
+      flex-direction: column;
+      gap: 0.85rem;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+      border-left: 4px solid var(--emerald-accent);
+      animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .surgical-panel.show {
+      display: flex;
+    }
+
+    .surgical-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .surgical-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .surgical-title .icon {
+      color: var(--emerald-accent);
+    }
+    .surgical-sub {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--cyan-accent);
+    }
+
+    .surgical-options-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.85rem;
+    }
+
+    .surgical-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      transition: all 0.18s ease;
+      position: relative;
+    }
+    .surgical-card:hover:not(.disabled) {
+      border-color: var(--cyan-accent);
+      background: #253347;
+      transform: translateY(-2px);
+    }
+    .surgical-card-top {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .surgical-key {
+      background: #0f172a;
+      border: 1px solid var(--border-accent);
+      color: var(--cyan-accent);
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 0.95rem;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .surgical-code {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.35;
+      word-break: break-all;
+    }
+    .surgical-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    /* Estados de la tarjeta quirúrgica */
+    .surgical-card.correct {
+      background: rgba(16, 185, 129, 0.18) !important;
+      border-color: var(--emerald-accent) !important;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    }
+    .surgical-card.incorrect {
+      background: rgba(239, 68, 68, 0.18) !important;
+      border-color: var(--coral-accent) !important;
+    }
+    .surgical-card.disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+    .surgical-card.correct.disabled,
+    .surgical-card.incorrect.disabled {
+      opacity: 1;
+    }
+
+    /* ==========================================================================
+       BARRA INFERIOR DE CONTROL Y ESTADO
+       ========================================================================== */
+    .moderator-bar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .status-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--emerald-accent);
+      box-shadow: 0 0 8px var(--emerald-accent);
+    }
+    .status-indicator.paused {
+      background: var(--amber-accent);
+      box-shadow: 0 0 8px var(--amber-accent);
+    }
+    .status-indicator.finished {
+      background: var(--coral-accent);
+      box-shadow: 0 0 8px var(--coral-accent);
+    }
+    .status-text {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .moderator-buttons {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-mod-action {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.92rem;
+      font-weight: 600;
+      padding: 0.55rem 1.1rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      transition: all 0.2s ease;
+    }
+    .btn-mod-action:hover:not(:disabled) {
+      background: #253347;
+      border-color: var(--cyan-accent);
+    }
+    .btn-mod-action:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .btn-mod-action.btn-accent {
+      background: var(--cyan-accent);
+      color: #032b43;
+      border-color: var(--cyan-accent);
+      font-weight: 700;
+    }
+    .btn-mod-action.btn-accent:hover:not(:disabled) {
+      background: #7dd3fc;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    }
+    .btn-mod-action.btn-comodin {
+      border-color: rgba(245, 158, 11, 0.4);
+      color: var(--amber-accent);
+    }
+    .btn-mod-action.btn-comodin:hover:not(:disabled) {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: var(--amber-accent);
+    }
+
+    .btn-kbd {
+      background: #0f172a;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    /* ==========================================================================
+       MODAL DE PRUEBA DE ESCRITORIO & ANÁLISIS
+       ========================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 900px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.96);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .modal-backdrop.open .modal-dialog {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      background: #0d1322;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .modal-body {
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .trace-section-title {
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--cyan-accent);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .trace-card {
+      background: #070a12;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.25rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .trace-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    .trace-table th {
+      background: #090e1a;
+      color: var(--cyan-accent);
+      font-weight: 700;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .trace-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #1e293b;
+      color: #cbd5e1;
+    }
+    .trace-table tr:last-child td {
+      border-bottom: none;
+    }
+    .trace-table tr:hover td {
+      background: rgba(30, 41, 59, 0.4);
+    }
+
+    .modal-footer {
+      background: #0d1322;
+      border-top: 1px solid var(--border-subtle);
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* ==========================================================================
+       OVERLAY DE RELEVO DE PARTICIPANTES (TRANSICIÓN DE 3 SEGUNDOS)
+       ========================================================================== */
+    .transition-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 15, 25, 0.94);
+      backdrop-filter: blur(12px);
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .transition-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .transition-banner {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      color: var(--cyan-accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 0.4rem 1.2rem;
+      border-radius: var(--radius-sm);
+    }
+    .transition-target-team {
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .transition-target-member {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .transition-countdown-circle {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 4px solid var(--cyan-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 2.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-top: 1rem;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.3);
+      animation: pulse-countdown 1s infinite;
+    }
+
+    /* ==========================================================================
+       PANTALLA DE BIENVENIDA & LANDING (SIEMPRE PRIMERO AL CARGAR)
+       ========================================================================== */
+    .welcome-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 50% 15%, #17253d 0%, #0b0f19 80%);
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem;
+      overflow-y: auto;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+    .welcome-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.97);
+      display: none !important;
+    }
+    .welcome-container {
+      max-width: 1100px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 1.5rem;
+    }
+    .welcome-badge {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--cyan-accent);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 0.4rem 1.2rem;
+      border-radius: var(--radius-sm);
+    }
+    .welcome-title {
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      color: white !important;
+
+    }
+    .welcome-sub {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      color: var(--cyan-accent);
+      letter-spacing: 0.05em;
+    }
+    .welcome-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      width: 100%;
+      text-align: left;
+      margin-top: 0.5rem;
+    }
+    .welcome-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.35rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .w-card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+    .welcome-card p {
+      font-size: 0.88rem;
+      line-height: 1.45;
+      color: var(--text-main);
+    }
+
+    .btn-start-game {
+      background: var(--cyan-accent);
+      color: #032b43;
+      font-family: var(--font-sans);
+      font-size: 1.2rem;
+      font-weight: 800;
+      padding: 0.9rem 2.2rem;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+      box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.4);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-start-game:hover {
+      background: #7dd3fc;
+      transform: translateY(-2px);
+      box-shadow: 0 15px 30px -5px rgba(56, 189, 248, 0.5);
+    }
+    .btn-start-game:active {
+      transform: translateY(0);
+    }
+    .btn-secondary-game {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+    .btn-secondary-game:hover {
+      background: #334155;
+      color: var(--cyan-accent);
+      border-color: var(--cyan-accent);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+    }
+
+    .btn-trial-game {
+      background: #1e293b;
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      box-shadow: 0 4px 15px rgba(251, 191, 36, 0.15);
+    }
+    .btn-trial-game:hover {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fef08a;
+      border-color: #fbbf24;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(251, 191, 36, 0.25);
+    }
+
+    /* Barra de Guía en Modo Ronda de Prueba */
+    .practice-guide-bar {
+      background: #0d1527;
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: 0 4px 20px rgba(251, 191, 36, 0.12);
+      animation: pulseGlow 3s infinite alternate;
+    }
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 4px 15px rgba(251, 191, 36, 0.12); }
+      100% { box-shadow: 0 4px 25px rgba(251, 191, 36, 0.28); }
+    }
+    .practice-guide-left {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      flex: 1;
+    }
+    .practice-guide-badge {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--amber-accent);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 0.3rem 0.65rem;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+    }
+    .practice-instruction {
+      font-size: 0.92rem;
+      color: #f8fafc;
+      line-height: 1.4;
+    }
+    .practice-instruction strong {
+      color: var(--cyan-accent);
+    }
+    .practice-instruction code {
+      background: #1e293b;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+    .practice-guide-buttons {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      white-space: nowrap;
+    }
+    .btn-guide-start {
+      background: var(--emerald-accent);
+      color: #022c22;
+      border: none;
+      padding: 0.5rem 1.1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+    .btn-guide-start:hover {
+      background: #6ee7b7;
+      transform: translateY(-1px);
+    }
+    .btn-guide-back {
+      background: #1e293b;
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      padding: 0.5rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s ease;
+    }
+    .btn-guide-back:hover {
+      background: #334155;
+      color: var(--text-main);
+    }
+
+        /* ==========================================================================
+       PANTALLA FINAL DE PODIO
+       ========================================================================== */
+    .podium-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 15, 25, 0.95);
+      backdrop-filter: blur(16px);
+      z-index: 400;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      overflow-y: auto;
+    }
+    .podium-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .podium-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .podium-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+    .podium-subtitle {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      color: var(--cyan-accent);
+    }
+    .podium-grid {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 2.5rem;
+    }
+    .podium-pillar {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      padding: 1.5rem 1rem;
+      box-shadow: var(--shadow-elevation);
+    }
+    .pillar-1st { height: 320px; border-color: var(--amber-accent); order: 2; }
+    .pillar-2nd { height: 260px; border-color: #94a3b8; order: 1; }
+    .pillar-3rd { height: 210px; border-color: #b45309; order: 3; }
+
+    .podium-rank-badge {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+    .podium-team-name {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+    .podium-team-pts {
+      font-family: var(--font-mono);
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.75rem;
+    }
+    .podium-stats {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Animaciones */
+    @keyframes pulse-countdown {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.75; }
+    }
+    @keyframes slide-up {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       PANTALLA DE BIENVENIDA Y REGLAS OFICIALES (CODE SNIPER)
+       ========================================================================== -->
+  <div class="welcome-overlay" id="welcomeOverlay">
+    <div class="welcome-container">
+      <div class="welcome-badge">TORNEO EN VIVO • INSPECCIÓN DIRECTA DE CÓDIGO</div>
+      <h1 class="welcome-title">CODE SNIPER</h1>
+      <p class="welcome-sub">EL FRANCOTIRADOR DE BUGS PARA AUDITORÍAS DE PSEUDOCÓDIGO</p>
+
+      <div class="welcome-grid">
+        <!-- Tarjeta 1: Dinámica Point & Click -->
+        <div class="welcome-card" style="border-top: 3px solid var(--team-2);">
+          <div class="w-card-title">
+            <svg class="icon" style="color: var(--team-2);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+            <span>MIRA Y DISPARO (POINT & CLICK)</span>
+          </div>
+          <p>Un estudiante por turno pasa al frente a la PC con ratón.</p>
+          <p style="margin-top: 0.4rem; color: var(--text-muted);">Examina el algoritmo en el IDE y <strong>haz clic directo sobre la línea defectuosa</strong> (o usa teclado numérico + Enter). Tienes hasta 2 intentos.</p>
+        </div>
+
+        <!-- Tarjeta 2: Falsos Positivos & Puntuación -->
+        <div class="welcome-card" style="border-top: 3px solid var(--coral-accent);">
+          <div class="w-card-title">
+            <svg class="icon" style="color: var(--coral-accent);" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span>FALSO POSITIVO (-20 PTS)</span>
+          </div>
+          <p>Disparar a una línea sana cuesta <strong>-20 PTS</strong> del bote y consume 1 intento.</p>
+          <p style="margin-top: 0.4rem; color: var(--text-muted);">Si fallas 2 intentos o se acaba el tiempo, el bug se revela y se otorgan 0 PTS.</p>
+        </div>
+
+        <!-- Tarjeta 3: Corrección Quirúrgica -->
+        <div class="welcome-card" style="border-top: 3px solid var(--emerald-accent);">
+          <div class="w-card-title">
+            <svg class="icon" style="color: var(--emerald-accent);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>PARCHE QUIRÚRGICO</span>
+          </div>
+          <p>Al acertar la línea del bug, se desbloquea el panel quirúrgico.</p>
+          <p style="margin-top: 0.4rem; color: var(--text-muted);">Elige el reemplazo de código exacto (opciones A, B o C) para consolidar los puntos (+100 PTS o +80 PTS con 1 penalización previa).</p>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.25rem; display: flex; gap: 1.25rem; justify-content: center; align-items: center; flex-wrap: wrap;">
+        <button class="btn-start-game" id="btnStartGame" onclick="startGameTournament(true)">
+          <svg class="icon icon-lg" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span id="btnStartText">INICIAR TORNEO EN VIVO</span>
+          <span class="btn-kbd" style="background: rgba(0,0,0,0.3); color: #021a29; font-size: 0.85rem;">Enter</span>
+        </button>
+        <button class="btn-start-game btn-trial-game" id="btnTrialGame" onclick="startInteractivePractice()">
+          <svg class="icon icon-lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+          <span>RONDA DE PRUEBA</span>
+          <span class="btn-kbd" style="background: rgba(251, 191, 36, 0.2); color: var(--amber-accent); font-size: 0.85rem;">Tutorial</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       CABECERA DE CONTROL (MARCADOR, RELEVO Y TEMPORIZADOR)
+       ========================================================================== -->
+  <header>
+    <!-- 1. Banner de Relevo Activo (Izquierda) -->
+    <div class="relay-banner">
+      <div class="badge-round" id="roundBadge">
+        RONDA <span id="currentRoundText">1</span>/5
+      </div>
+      <div class="badge-team-relay team-2-badge" id="activeTeamBadge">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+        <span id="activeTeamName">EQUIPO 2</span>
+      </div>
+      <div class="badge-member" id="activeMemberBadge">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span id="activeMemberName">INTEGRANTE 1</span>
+      </div>
+    </div>
+
+    <!-- 2. Marcador Central de los 3 Equipos (Centro) -->
+    <div class="scoreboard">
+      <!-- Equipo 2 -->
+      <div class="team-card active-turn" id="scoreCard0" style="color: var(--team-2);">
+        <span class="team-label">EQUIPO 2</span>
+        <span class="team-pts" id="score0">0</span>
+        <div class="team-modifiers">
+          <button class="btn-mod" onclick="adjustScore(0, 100)" title="Sumar 100">+</button>
+          <button class="btn-mod" onclick="adjustScore(0, -100)" title="Restar 100">-</button>
+        </div>
+      </div>
+      <!-- Equipo 3 -->
+      <div class="team-card" id="scoreCard1" style="color: var(--team-3);">
+        <span class="team-label">EQUIPO 3</span>
+        <span class="team-pts" id="score1">0</span>
+        <div class="team-modifiers">
+          <button class="btn-mod" onclick="adjustScore(1, 100)" title="Sumar 100">+</button>
+          <button class="btn-mod" onclick="adjustScore(1, -100)" title="Restar 100">-</button>
+        </div>
+      </div>
+      <!-- Equipo 4 -->
+      <div class="team-card" id="scoreCard2" style="color: var(--team-4);">
+        <span class="team-label">EQUIPO 4</span>
+        <span class="team-pts" id="score2">0</span>
+        <div class="team-modifiers">
+          <button class="btn-mod" onclick="adjustScore(2, 100)" title="Sumar 100">+</button>
+          <button class="btn-mod" onclick="adjustScore(2, -100)" title="Restar 100">-</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Temporizador y Pantalla Completa (Derecha) -->
+    <div class="header-right">
+      <div class="timer-container" id="timerContainer" title="Temporizador del reto">
+        <svg class="timer-svg" viewBox="0 0 58 58">
+          <circle class="timer-circle-bg" cx="29" cy="29" r="25"></circle>
+          <circle class="timer-circle-progress" id="timerProgress" cx="29" cy="29" r="25"></circle>
+        </svg>
+        <span class="timer-digits" id="timerDigits">45</span>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn-action" onclick="toggleFullScreen()" title="Pantalla Completa (F11)">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Banner Comodín Toast -->
+  <div class="comodin-toast" id="comodinToast">
+    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    <span>COMODÍN DE CONSULTA ACTIVO (+10s EN PAUSA)</span>
+  </div>
+
+  <!-- ==========================================================================
+       ÁREA PRINCIPAL DEL DESAFÍO (IDE CODE SNIPER)
+       ========================================================================== -->
+  <main>
+    <!-- Barra de Guía para la Ronda de Prueba -->
+    <div class="practice-guide-bar" id="practiceGuideBar" style="display: none;">
+      <div class="practice-guide-left">
+        <div class="practice-guide-badge">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+          <span>MODO ENTRENAMIENTO</span>
+        </div>
+        <div class="practice-instruction" id="practiceInstruction">
+          Haz clic con el mouse directamente sobre la Línea 3 (<code>total &lt;- a - b</code>) para apuntar al bug.
+        </div>
+      </div>
+      <div class="practice-guide-buttons">
+        <button class="btn-guide-start" onclick="startGameTournament(true)" title="Comenzar competencia oficial">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span>Iniciar Torneo Oficial</span>
+        </button>
+        <button class="btn-guide-back" onclick="exitPracticeMode()" title="Volver al menú de bienvenida">
+          <span>Volver al Inicio</span>
+        </button>
+      </div>
+    </div>
+
+    <section class="ide-window">
+      <!-- Titlebar -->
+      <div class="ide-titlebar">
+        <div class="ide-controls">
+          <div class="ide-dot dot-close"></div>
+          <div class="ide-dot dot-min"></div>
+          <div class="ide-dot dot-max"></div>
+        </div>
+      </div>
+
+      <!-- Contenido del IDE -->
+      <div class="ide-content">
+        <!-- Panel de Diagnóstico -->
+        <div class="diagnosis-panel">
+          <div class="diagnosis-row">
+            <span class="diag-label obj">OBJETIVO</span>
+            <span class="diag-text" id="diagObjective">Cargando objetivo del algoritmo...</span>
+          </div>
+          <div class="diagnosis-row">
+            <span class="diag-label bug">ANOMALÍA</span>
+            <span class="diag-text" id="diagAnomaly" style="color: #fca5a5;">Cargando anomalía reportada...</span>
+          </div>
+        </div>
+
+        <!-- Editor de Código Clickable -->
+        <div class="editor-wrapper">
+          <div class="editor-header-hint">
+            <span id="sniperPhaseHint">FASE 1: HAZ CLIC DIRECTO SOBRE LA LÍNEA DEFECTUOSA CON EL MOUSE</span>
+            <span class="hint-attempts" id="sniperAttemptsText">
+              <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              <span>INTENTOS: 2 / 2</span>
+            </span>
+          </div>
+          <div class="code-lines-list" id="codeLinesList">
+            <!-- Filas generadas dinámicamente -->
+          </div>
+        </div>
+
+        <!-- Panel Quirúrgico (Fase 2) -->
+        <div class="surgical-panel" id="surgicalPanel">
+          <div class="surgical-header">
+            <div class="surgical-title">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+              <span>CORRECCIÓN QUIRÚRGICA DEL BUG</span>
+            </div>
+            <div class="surgical-sub" id="surgicalLineReference">LÍNEA SELECCIONADA: 2</div>
+          </div>
+          <div class="surgical-options-grid" id="surgicalOptionsGrid">
+            <!-- 3 opciones quirúrgicas A, B, C -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Barra de Control del Moderador -->
+    <div class="moderator-bar">
+      <div class="system-status">
+        <div class="status-indicator" id="statusDot"></div>
+        <span class="status-text" id="statusMessage">INSPECCIÓN EN VIVO: APUNTA AL BUG</span>
+      </div>
+
+      <div class="moderator-buttons">
+        <!-- Comodín de Consulta -->
+        <button class="btn-mod-action btn-comodin" id="btnComodin" onclick="triggerComodin()" title="Pausar 10s para consultar al equipo">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          <span id="comodinLabel">Comodín Consulta</span>
+          <span class="btn-kbd">H</span>
+        </button>
+
+        <!-- Pausa / Reanudar -->
+        <button class="btn-mod-action" id="btnPause" onclick="togglePauseTimer()" title="Pausar o reanudar el cronómetro">
+          <svg class="icon" id="pauseIcon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          <span id="pauseLabel">Pausar</span>
+          <span class="btn-kbd">Espacio</span>
+        </button>
+
+        <!-- Ver Análisis de Memoria -->
+        <button class="btn-mod-action" id="btnShowTrace" onclick="openTraceModal()" disabled title="Disponible tras resolver o acabarse el tiempo">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M2 12h20"></path><path d="M20 12l-4-4"></path><path d="M20 12l-4 4"></path></svg>
+          <span>Ver Análisis</span>
+          <span class="btn-kbd">T</span>
+        </button>
+
+        <!-- Siguiente Turno -->
+        <button class="btn-mod-action btn-accent" id="btnNextTurn" onclick="proceedToNextQuestion()" disabled title="Avanzar al siguiente participante">
+          <span>Siguiente Turno</span>
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          <span class="btn-kbd" style="background: rgba(0,0,0,0.25); color: #021a29;">Enter</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+       MODAL DE PRUEBA DE ESCRITORIO & ANÁLISIS
+       ========================================================================== -->
+  <div class="modal-backdrop" id="traceModalBackdrop" onclick="handleBackdropClick(event)">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg class="icon" style="color: var(--cyan-accent);" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <span>PRUEBA DE ESCRITORIO & ANÁLISIS DE SOLUCIÓN</span>
+        </div>
+        <button class="btn-action" onclick="closeTraceModal()" title="Cerrar modal (Esc o T)">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Corrección Quirúrgica Oficial -->
+        <div>
+          <div class="trace-section-title">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>PARCHE QUIRÚRGICO APLICADO</span>
+          </div>
+          <div class="trace-card" id="traceCorrectCodeText" style="border-left: 4px solid var(--emerald-accent); font-family: var(--font-mono); color: #6ee7b7; white-space: pre-wrap;">
+            Cargando código corregido...
+          </div>
+        </div>
+
+        <!-- Explicación Técnica -->
+        <div>
+          <div class="trace-section-title">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>DIAGNÓSTICO TÉCNICO Y CAUSA RAÍZ</span>
+          </div>
+          <div class="trace-card" id="traceAnalysisText">
+            Cargando análisis técnico...
+          </div>
+        </div>
+
+        <!-- Tabla de Estado de Variables -->
+        <div>
+          <div class="trace-section-title">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"></path></svg>
+            <span>TABLA DE ESTADO DE VARIABLES (PRUEBA DE ESCRITORIO)</span>
+          </div>
+          <table class="trace-table">
+            <thead>
+              <tr>
+                <th>Paso / Instrucción</th>
+                <th>Variables en Memoria</th>
+                <th>Condición Lógica</th>
+                <th>Salida en Pantalla</th>
+              </tr>
+            </thead>
+            <tbody id="traceTableBody">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-mod-action btn-accent" onclick="closeTraceModal()">
+          <span>Continuar</span>
+          <span class="btn-kbd" style="background: rgba(0,0,0,0.25); color: #021a29;">Esc</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       TRANSICIÓN DE RELEVO DE 3 SEGUNDOS
+       ========================================================================== -->
+  <div class="transition-overlay" id="transitionOverlay">
+    <div class="transition-banner">CAMBIO DE TURNO EN LA PC</div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+      <div class="transition-target-team" id="transTeamName">EQUIPO 3</div>
+      <div class="transition-target-member" id="transMemberName">PASA: INTEGRANTE 1</div>
+    </div>
+    
+    <div class="transition-countdown-circle" id="transCountdownCircle">
+      <span id="transSeconds">3</span>
+    </div>
+
+    <button class="btn-mod-action" onclick="skipTransitionNow()" style="margin-top: 1rem;">
+      <span>Comenzar Ahora</span>
+      <span class="btn-kbd">Enter</span>
+    </button>
+  </div>
+
+  <!-- ==========================================================================
+       PANTALLA FINAL DE PODIO
+       ========================================================================== -->
+  <div class="podium-overlay" id="podiumOverlay">
+    <div class="podium-header">
+      <div style="margin-bottom: 0.75rem;">
+        <svg class="icon icon-xl" style="color: var(--amber-accent);" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+      </div>
+      <h1 class="podium-title">TORNEO FINALIZADO</h1>
+      <p class="podium-subtitle">RESULTADOS OFICIALES DEL CODE SNIPER</p>
+    </div>
+
+    <div class="podium-grid">
+      <!-- 2do Lugar -->
+      <div class="podium-pillar pillar-2nd">
+        <div class="podium-rank-badge" style="color: #94a3b8;">2º LUGAR</div>
+        <div class="podium-team-name" id="podiumName2">EQUIPO 3</div>
+        <div class="podium-team-pts" id="podiumScore2">0 PTS</div>
+        <div class="podium-stats" id="podiumStats2">Aciertos: 0/0</div>
+      </div>
+
+      <!-- 1er Lugar -->
+      <div class="podium-pillar pillar-1st">
+        <div class="podium-rank-badge" style="color: var(--amber-accent);">1º LUGAR (CAMPEÓN)</div>
+        <div class="podium-team-name" id="podiumName1">EQUIPO 2</div>
+        <div class="podium-team-pts" id="podiumScore1">0 PTS</div>
+        <div class="podium-stats" id="podiumStats1">Aciertos: 0/0</div>
+      </div>
+
+      <!-- 3er Lugar -->
+      <div class="podium-pillar pillar-3rd">
+        <div class="podium-rank-badge" style="color: #b45309;">3º LUGAR</div>
+        <div class="podium-team-name" id="podiumName3">EQUIPO 4</div>
+        <div class="podium-team-pts" id="podiumScore3">0 PTS</div>
+        <div class="podium-stats" id="podiumStats3">Aciertos: 0/0</div>
+      </div>
+    </div>
+
+    <button class="btn-start-game" onclick="restartTournament()">
+      <svg class="icon" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+      <span>Nuevo Torneo</span>
+    </button>
+  </div>
+
+  <!-- ==========================================================================
+       LÓGICA JAVASCRIPT DEL CODE SNIPER
+       ========================================================================== -->
+  <script>
+    const CHALLENGES_DB = [
+  {
+    "id": 1,
+    "round": 1,
+    "title": "Cálculo de Promedio Simple",
+    "filename": "promedio_notas.psc",
+    "objective": "Calcular el promedio exacto de tres notas (n1=3.0, n2=4.0, n3=5.0).",
+    "anomaly": "El sistema calcula un promedio erróneo de 8.66 en vez de 4.0 por falta de agrupación.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir n1, n2, n3, prom Como Real"
+      },
+      {
+        "num": 2,
+        "text": "n1 <- 3.0; n2 <- 4.0; n3 <- 5.0"
+      },
+      {
+        "num": 3,
+        "text": "prom <- n1 + n2 + n3 / 3"
+      },
+      {
+        "num": 4,
+        "text": "Escribir prom"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "En PSeInt, la división tiene mayor precedencia que la suma. 'n3 / 3' se calcula primero: 3.0 + 4.0 + (5.0 / 3) = 8.66.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "prom <- n1 + n2 + (n3 / 3)",
+        "isCorrect": false,
+        "detail": "Mantiene la división aislada sin corregir la precedencia."
+      },
+      {
+        "key": "B",
+        "code": "prom <- (n1 + n2 + n3) / 3",
+        "isCorrect": true,
+        "detail": "Agrupa la suma entre paréntesis para forzar su suma antes de dividir."
+      },
+      {
+        "key": "C",
+        "code": "prom <- (n1 + n2) / 3 + n3",
+        "isCorrect": false,
+        "detail": "Solo promedia las dos primeras notas y suma la tercera entera."
+      }
+    ],
+    "correctedCode": "prom <- (n1 + n2 + n3) / 3",
+    "trace": [
+      {
+        "step": "Definición",
+        "memory": "n1, n2, n3, prom (Reales)",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Asignación inicial",
+        "memory": "n1=3.0, n2=4.0, n3=5.0",
+        "condition": "Valores base",
+        "output": "-"
+      },
+      {
+        "step": "Suma agrupada",
+        "memory": "(3.0 + 4.0 + 5.0) = 12.0",
+        "condition": "Prioridad (...)",
+        "output": "-"
+      },
+      {
+        "step": "División",
+        "memory": "prom = 12.0 / 3 = 4.0",
+        "condition": "prom <- 4.0",
+        "output": "-"
+      },
+      {
+        "step": "Escribir",
+        "memory": "prom = 4.0",
+        "condition": "-",
+        "output": "4.0"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "round": 1,
+    "title": "Intercambio de Variables (Swap)",
+    "filename": "intercambio_valores.psc",
+    "objective": "Intercambiar los valores de 'a' (10) y 'b' (20) utilizando la variable auxiliar 'aux'.",
+    "anomaly": "Ambas variables terminan valiendo 20; el valor inicial de 'a' se pierde por sobreescritura.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir a, b, aux Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "a <- 10; b <- 20; aux <- 0"
+      },
+      {
+        "num": 3,
+        "text": "a <- b"
+      },
+      {
+        "num": 4,
+        "text": "b <- aux"
+      },
+      {
+        "num": 5,
+        "text": "Escribir a, \" - \", b"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "Se asigna 'b' a 'a' directamente, borrando el 10 sin haberlo respaldado antes en 'aux'.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "aux <- b",
+        "isCorrect": false,
+        "detail": "Guarda 20 en 'aux', provocando que ambas variables terminen en 20."
+      },
+      {
+        "key": "B",
+        "code": "b <- a",
+        "isCorrect": false,
+        "detail": "Sobreescribe 'b' sin concretar el intercambio en dos sentidos."
+      },
+      {
+        "key": "C",
+        "code": "aux <- a",
+        "isCorrect": true,
+        "detail": "Respalda el 10 de 'a' en 'aux' antes de que 'a' tome el valor de 'b'."
+      }
+    ],
+    "correctedCode": "aux <- a\na <- b\nb <- aux",
+    "trace": [
+      {
+        "step": "Estado inicial",
+        "memory": "a=10, b=20, aux=0",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Respaldo",
+        "memory": "aux <- 10",
+        "condition": "aux <- a",
+        "output": "-"
+      },
+      {
+        "step": "Paso de b a a",
+        "memory": "a <- 20",
+        "condition": "a <- b",
+        "output": "-"
+      },
+      {
+        "step": "Recuperación de aux",
+        "memory": "b <- 10",
+        "condition": "b <- aux",
+        "output": "-"
+      },
+      {
+        "step": "Salida",
+        "memory": "a=20, b=10",
+        "condition": "-",
+        "output": "20 - 10"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "round": 1,
+    "title": "Cálculo del Residuo de División Entera",
+    "filename": "calculo_residuo.psc",
+    "objective": "Obtener el residuo exacto de dividir 25 entre 4 (resultado esperado: 1).",
+    "anomaly": "Se emplea división real ('/'), arrojando cociente decimal 6.25 en lugar del resto 1.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir dividendo, divisor, residuo Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "dividendo <- 25; divisor <- 4"
+      },
+      {
+        "num": 3,
+        "text": "residuo <- dividendo / divisor"
+      },
+      {
+        "num": 4,
+        "text": "Escribir residuo"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "En PSeInt, la barra '/' calcula el cociente. Para obtener el resto de una división entera se debe utilizar el operador MOD.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "residuo <- dividendo MOD divisor",
+        "isCorrect": true,
+        "detail": "Calcula el resto entero exacto: 25 - (4 * 6) = 1."
+      },
+      {
+        "key": "B",
+        "code": "residuo <- dividendo * divisor",
+        "isCorrect": false,
+        "detail": "Realiza una multiplicación calculando 100."
+      },
+      {
+        "key": "C",
+        "code": "residuo <- dividendo - divisor",
+        "isCorrect": false,
+        "detail": "Resta los valores dando 21."
+      }
+    ],
+    "correctedCode": "residuo <- dividendo MOD divisor",
+    "trace": [
+      {
+        "step": "Entradas",
+        "memory": "dividendo=25, divisor=4",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Cálculo MOD",
+        "memory": "25 MOD 4 = 1",
+        "condition": "Cociente 6, Residuo 1",
+        "output": "-"
+      },
+      {
+        "step": "Asignación",
+        "memory": "residuo <- 1",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Impresión",
+        "memory": "residuo = 1",
+        "condition": "-",
+        "output": "1"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "round": 1,
+    "title": "Incremento Salarial Porcentual",
+    "filename": "incremento_sueldo.psc",
+    "objective": "Calcular el nuevo salario sumando un aumento del 15% a un sueldo base de 1000.0 (esperado: 1150.0).",
+    "anomaly": "El sueldo se reduce drásticamente a 150.0 porque solo se calculó el aumento sin sumarlo al sueldo.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir sueldo, nuevo_sueldo Como Real"
+      },
+      {
+        "num": 2,
+        "text": "sueldo <- 1000.0"
+      },
+      {
+        "num": 3,
+        "text": "nuevo_sueldo <- sueldo * 0.15"
+      },
+      {
+        "num": 4,
+        "text": "Escribir nuevo_sueldo"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "'sueldo * 0.15' es solo la bonificación. Debe sumarse al sueldo original: 'sueldo + (sueldo * 0.15)'.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "nuevo_sueldo <- sueldo - (sueldo * 0.15)",
+        "isCorrect": false,
+        "detail": "Resta dinero aplicando un recorte salarial del 15%."
+      },
+      {
+        "key": "B",
+        "code": "nuevo_sueldo <- sueldo + (sueldo * 0.15)",
+        "isCorrect": true,
+        "detail": "Suma el 15% ($150) al salario base de $1000."
+      },
+      {
+        "key": "C",
+        "code": "nuevo_sueldo <- sueldo * 15.0",
+        "isCorrect": false,
+        "detail": "Multiplica por 15 disparando el sueldo a 15000.0."
+      }
+    ],
+    "correctedCode": "nuevo_sueldo <- sueldo + (sueldo * 0.15)",
+    "trace": [
+      {
+        "step": "Base",
+        "memory": "sueldo = 1000.0",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "15%",
+        "memory": "1000.0 * 0.15 = 150.0",
+        "condition": "Aumento",
+        "output": "-"
+      },
+      {
+        "step": "Total",
+        "memory": "nuevo_sueldo = 1000.0 + 150.0 = 1150.0",
+        "condition": "Suma",
+        "output": "-"
+      },
+      {
+        "step": "Salida",
+        "memory": "nuevo_sueldo = 1150.0",
+        "condition": "-",
+        "output": "1150.0"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "round": 2,
+    "title": "Validación de Rango de Edad",
+    "filename": "verificar_rango.psc",
+    "objective": "Validar que la variable 'edad' esté dentro del rango entre 18 y 60 años inclusive.",
+    "anomaly": "Una persona de 80 años es clasificada incorrectamente como 'RANGO_VALIDO'.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir edad Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "edad <- 80"
+      },
+      {
+        "num": 3,
+        "text": "Si (edad >= 18 O edad <= 60) Entonces"
+      },
+      {
+        "num": 4,
+        "text": "   Escribir \"RANGO_VALIDO\""
+      },
+      {
+        "num": 5,
+        "text": "SiNo"
+      },
+      {
+        "num": 6,
+        "text": "   Escribir \"RANGO_INVALIDO\""
+      },
+      {
+        "num": 7,
+        "text": "FinSi"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "En PSeInt, el operador disyuntivo 'O' se cumple si cualquiera de las dos cotas es Verdadera (80 >= 18 es Verdadero). Debe exigirse cumplimiento mutuo con 'Y'.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "Si (edad >= 18 Y edad <= 60) Entonces",
+        "isCorrect": true,
+        "detail": "Emplea el operador 'Y' para obligar a que se cumplan ambos límites a la vez."
+      },
+      {
+        "key": "B",
+        "code": "Si (edad > 18 O edad < 60) Entonces",
+        "isCorrect": false,
+        "detail": "Mantiene el operador 'O' y además excluye las edades 18 y 60."
+      },
+      {
+        "key": "C",
+        "code": "Si (18 <= edad <= 60) Entonces",
+        "isCorrect": false,
+        "detail": "Sintaxis no admitida por analizadores de pseudocódigo PSeInt."
+      }
+    ],
+    "correctedCode": "Si (edad >= 18 Y edad <= 60) Entonces",
+    "trace": [
+      {
+        "step": "Edad asignada",
+        "memory": "edad = 80",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Cota inferior",
+        "memory": "80 >= 18 -> Verdadero",
+        "condition": "Cumple",
+        "output": "-"
+      },
+      {
+        "step": "Cota superior",
+        "memory": "80 <= 60 -> Falso",
+        "condition": "No cumple",
+        "output": "-"
+      },
+      {
+        "step": "Evaluación Y",
+        "memory": "Verdadero Y Falso -> FALSO",
+        "condition": "Pasa a SiNo",
+        "output": "-"
+      },
+      {
+        "step": "Resultado",
+        "memory": "-",
+        "condition": "Rama SiNo ejecutada",
+        "output": "RANGO_INVALIDO"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "round": 2,
+    "title": "Igualdad vs Asignación en PSeInt",
+    "filename": "comparacion_sintaxis.psc",
+    "objective": "Otorgar un bono de 500 solo si el código del empleado es exactamente 105.",
+    "anomaly": "El condicional evalúa erróneamente o produce asignación forzada en perfiles estrictos.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir codigo, bono Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "codigo <- 101; bono <- 0"
+      },
+      {
+        "num": 3,
+        "text": "Si (codigo <- 105) Entonces"
+      },
+      {
+        "num": 4,
+        "text": "   bono <- 500"
+      },
+      {
+        "num": 5,
+        "text": "FinSi"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "'<-' es el operador de asignación destructiva en PSeInt, no de comparación lógica. Para comparar igualdad se usa '=' o '=='.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "Si (codigo <> 105) Entonces",
+        "isCorrect": false,
+        "detail": "Evalúa desigualdad ('diferente de'), premiando a cualquier otro código."
+      },
+      {
+        "key": "B",
+        "code": "Si (codigo > 105) Entonces",
+        "isCorrect": false,
+        "detail": "Compara si es mayor que 105 sin validar igualdad exacta."
+      },
+      {
+        "key": "C",
+        "code": "Si (codigo = 105) Entonces",
+        "isCorrect": true,
+        "detail": "Usa el operador relacional de igualdad formal de PSeInt."
+      }
+    ],
+    "correctedCode": "Si (codigo = 105) Entonces",
+    "trace": [
+      {
+        "step": "Valores",
+        "memory": "codigo = 101, bono = 0",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Comparación",
+        "memory": "101 = 105",
+        "condition": "FALSO",
+        "output": "-"
+      },
+      {
+        "step": "Salto",
+        "memory": "No ingresa al bloque Si",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Bono final",
+        "memory": "bono = 0",
+        "condition": "-",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "round": 2,
+    "title": "Límite Estricto de Velocidad",
+    "filename": "limite_velocidad.psc",
+    "objective": "Multar únicamente si la velocidad supera estrictamente los 80 km/h.",
+    "anomaly": "El radar multa indebidamente a un conductor que viaja exactamente a 80 km/h (velocidad permitida).",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir velocidad Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "velocidad <- 80"
+      },
+      {
+        "num": 3,
+        "text": "Si (velocidad >= 80) Entonces"
+      },
+      {
+        "num": 4,
+        "text": "   Escribir \"MULTA\""
+      },
+      {
+        "num": 5,
+        "text": "FinSi"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "'>=' incluye la igualdad (80 >= 80 es Verdadero). Para exigir superar el límite debe usarse mayor estricto '>'.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "Si (velocidad < 80) Entonces",
+        "isCorrect": false,
+        "detail": "Multaría únicamente a vehículos lentos por debajo de 80."
+      },
+      {
+        "key": "B",
+        "code": "Si (velocidad > 80) Entonces",
+        "isCorrect": true,
+        "detail": "Exige estrictamente superar los 80 km/h para activar la multa."
+      },
+      {
+        "key": "C",
+        "code": "Si (velocidad = 80) Entonces",
+        "isCorrect": false,
+        "detail": "Multaría únicamente a los que van exactamente a 80."
+      }
+    ],
+    "correctedCode": "Si (velocidad > 80) Entonces",
+    "trace": [
+      {
+        "step": "Sensor",
+        "memory": "velocidad = 80",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Evaluación",
+        "memory": "80 > 80",
+        "condition": "FALSO",
+        "output": "-"
+      },
+      {
+        "step": "Condición no cumplida",
+        "memory": "-",
+        "condition": "No imprime multa",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "round": 2,
+    "title": "Descuento por Monto y Medio de Pago",
+    "filename": "descuento_doble_condicion.psc",
+    "objective": "Aplicar descuento solo si el monto supera 100000.0 Y el medio de pago es 'EFECTIVO'.",
+    "anomaly": "Un cliente pagando con 'TARJETA' recibe el descuento indebidamente debido al operador 'O'.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir monto Como Real"
+      },
+      {
+        "num": 2,
+        "text": "Definir medio_pago Como Cadena"
+      },
+      {
+        "num": 3,
+        "text": "monto <- 150000.0; medio_pago <- \"TARJETA\""
+      },
+      {
+        "num": 4,
+        "text": "Si (monto > 100000.0 O medio_pago = \"EFECTIVO\") Entonces"
+      },
+      {
+        "num": 5,
+        "text": "   Escribir \"DESCUENTO_APLICADO\""
+      },
+      {
+        "num": 6,
+        "text": "FinSi"
+      }
+    ],
+    "bugLine": 4,
+    "bugExplanation": "El operador 'O' valida que cualquiera sea cierta. Como el monto supera 100000, autoriza el descuento ignorando el pago con tarjeta.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "Si (monto >= 100000.0 O medio_pago <> \"EFECTIVO\") Entonces",
+        "isCorrect": false,
+        "detail": "Mantiene 'O' y cambia la igualdad a diferencia."
+      },
+      {
+        "key": "B",
+        "code": "Si (NO (monto > 100000.0) Y medio_pago = \"EFECTIVO\") Entonces",
+        "isCorrect": false,
+        "detail": "Invierte la regla del monto mínimo requerido."
+      },
+      {
+        "key": "C",
+        "code": "Si (monto > 100000.0 Y medio_pago = \"EFECTIVO\") Entonces",
+        "isCorrect": true,
+        "detail": "Usa conjunción 'Y' para obligar a que ambas condiciones se cumplan al tiempo."
+      }
+    ],
+    "correctedCode": "Si (monto > 100000.0 Y medio_pago = \"EFECTIVO\") Entonces",
+    "trace": [
+      {
+        "step": "Entradas",
+        "memory": "monto=150000.0, medio_pago='TARJETA'",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Condición monto",
+        "memory": "150000.0 > 100000.0",
+        "condition": "Verdadero",
+        "output": "-"
+      },
+      {
+        "step": "Condición pago",
+        "memory": "'TARJETA' = 'EFECTIVO'",
+        "condition": "Falso",
+        "output": "-"
+      },
+      {
+        "step": "Evaluación Y",
+        "memory": "Verdadero Y Falso -> FALSO",
+        "condition": "Rechazado",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "round": 3,
+    "title": "Contador sin Incremento en Mientras",
+    "filename": "contador_simple.psc",
+    "objective": "Imprimir correlativamente los números del 1 al 10 en la consola.",
+    "anomaly": "Bucle infinito: la pantalla se llena de números 1 sin detenerse porque 'c' nunca cambia.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir c Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "c <- 1"
+      },
+      {
+        "num": 3,
+        "text": "Mientras (c <= 10) Hacer"
+      },
+      {
+        "num": 4,
+        "text": "   Escribir c"
+      },
+      {
+        "num": 5,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 5,
+    "bugExplanation": "En PSeInt, si no se avanza la variable de control antes de 'FinMientras', 'c <= 10' será eternamente Verdadero.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "c <- c + 1\nFinMientras",
+        "isCorrect": true,
+        "detail": "Incrementa el contador en 1 en cada iteración antes de cerrar el ciclo."
+      },
+      {
+        "key": "B",
+        "code": "Mientras (c >= 10) Hacer",
+        "isCorrect": false,
+        "detail": "Provoca que el ciclo ni siquiera inicie (1 >= 10 es Falso)."
+      },
+      {
+        "key": "C",
+        "code": "Escribir c + 1",
+        "isCorrect": false,
+        "detail": "Solo suma al mostrar en pantalla pero no altera 'c' en memoria."
+      }
+    ],
+    "correctedCode": "   c <- c + 1\nFinMientras",
+    "trace": [
+      {
+        "step": "Paso 1",
+        "memory": "c = 1",
+        "condition": "1 <= 10 (V)",
+        "output": "1"
+      },
+      {
+        "step": "Incremento",
+        "memory": "c <- 1 + 1 = 2",
+        "condition": "c <- c + 1",
+        "output": "-"
+      },
+      {
+        "step": "Iteraciones 2..10",
+        "memory": "c avanza de 1 en 1",
+        "condition": "c <= 10 (V)",
+        "output": "2, 3.. 10"
+      },
+      {
+        "step": "Paso 11",
+        "memory": "c = 11",
+        "condition": "11 <= 10 (FALSO)",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "round": 3,
+    "title": "Acumulador sin Inicializar en Cero",
+    "filename": "suma_primeros_n.psc",
+    "objective": "Calcular la sumatoria de los números del 1 al 5 (1 + 2 + 3 + 4 + 5 = 15).",
+    "anomaly": "La variable 'suma' contiene basura o arroja error por utilizarse sin haber sido inicializada.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir i, suma Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "i <- 1"
+      },
+      {
+        "num": 3,
+        "text": "Mientras (i <= 5) Hacer"
+      },
+      {
+        "num": 4,
+        "text": "   suma <- suma + i"
+      },
+      {
+        "num": 5,
+        "text": "   i <- i + 1"
+      },
+      {
+        "num": 6,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 1,
+    "bugExplanation": "En PSeInt, los acumuladores deben inicializarse en cero antes de operar; de lo contrario 'suma + i' no tiene valor de partida.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "Definir i, suma Como Entero; suma <- 1",
+        "isCorrect": false,
+        "detail": "Introduce un desfase de +1 arrojando 16 al final."
+      },
+      {
+        "key": "B",
+        "code": "Definir i, suma Como Entero; suma <- 0",
+        "isCorrect": true,
+        "detail": "Inicializa 'suma' explícitamente en 0 antes del ciclo."
+      },
+      {
+        "key": "C",
+        "code": "Definir i, suma Como Entero; suma <- i",
+        "isCorrect": false,
+        "detail": "Asigna 'i' antes de que esté definida con valor numérico."
+      }
+    ],
+    "correctedCode": "Definir i, suma Como Entero; suma <- 0",
+    "trace": [
+      {
+        "step": "Inicio",
+        "memory": "i = 1, suma = 0",
+        "condition": "1 <= 5 (V)",
+        "output": "-"
+      },
+      {
+        "step": "i = 1",
+        "memory": "suma = 0 + 1 = 1, i = 2",
+        "condition": "2 <= 5 (V)",
+        "output": "-"
+      },
+      {
+        "step": "i = 2 y 3",
+        "memory": "suma = 1 + 2 = 3; suma = 3 + 3 = 6",
+        "condition": "3 y 4 <= 5 (V)",
+        "output": "-"
+      },
+      {
+        "step": "i = 4 y 5",
+        "memory": "suma = 6 + 4 = 10; suma = 10 + 5 = 15",
+        "condition": "5 y 6 <= 5",
+        "output": "-"
+      },
+      {
+        "step": "Fin ciclo",
+        "memory": "suma = 15, i = 6",
+        "condition": "6 <= 5 (FALSO)",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "round": 3,
+    "title": "Conteo Regresivo en Sentido Contrario",
+    "filename": "conteo_regresivo.psc",
+    "objective": "Realizar una cuenta regresiva que imprima desde 5 hasta 1 y culmine.",
+    "anomaly": "Bucle infinito con crecimiento descontrolado: 'k' sube a 6, 7, 8... y 'k > 0' siempre es Verdadero.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir k Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "k <- 5"
+      },
+      {
+        "num": 3,
+        "text": "Mientras (k > 0) Hacer"
+      },
+      {
+        "num": 4,
+        "text": "   Escribir k"
+      },
+      {
+        "num": 5,
+        "text": "   k <- k + 1"
+      },
+      {
+        "num": 6,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 5,
+    "bugExplanation": "En una cuenta descendente se debe restar en cada paso ('k <- k - 1'). Al sumar, nunca se alcanzará la condición de salida 0.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "k <- k * 2",
+        "isCorrect": false,
+        "detail": "Multiplica por 2 acelerando el desbordamiento numérico."
+      },
+      {
+        "key": "B",
+        "code": "k <- k + 0",
+        "isCorrect": false,
+        "detail": "Deja 'k' estancada en 5 provocando otro ciclo infinito."
+      },
+      {
+        "key": "C",
+        "code": "k <- k - 1",
+        "isCorrect": true,
+        "detail": "Resta 1 en cada ciclo permitiendo que 'k' descienda hacia 0."
+      }
+    ],
+    "correctedCode": "   k <- k - 1",
+    "trace": [
+      {
+        "step": "Paso 1",
+        "memory": "k = 5 -> k = 4",
+        "condition": "5 > 0 (V)",
+        "output": "5"
+      },
+      {
+        "step": "Paso 2",
+        "memory": "k = 4 -> k = 3",
+        "condition": "4 > 0 (V)",
+        "output": "4"
+      },
+      {
+        "step": "Paso 3 y 4",
+        "memory": "k = 3 -> 2; k = 2 -> 1",
+        "condition": "k > 0 (V)",
+        "output": "3, 2"
+      },
+      {
+        "step": "Paso 5",
+        "memory": "k = 1 -> k = 0",
+        "condition": "1 > 0 (V)",
+        "output": "1"
+      },
+      {
+        "step": "Final",
+        "memory": "k = 0",
+        "condition": "0 > 0 (FALSO)",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "round": 3,
+    "title": "Productorio con Elemento Neutro Erróneo",
+    "filename": "multiplicacion_acumulada.psc",
+    "objective": "Calcular el producto acumulado de los enteros 1, 2, 3 y 4 (resultado esperado: 24).",
+    "anomaly": "El producto final siempre resulta 0; cualquier número multiplicado por cero da cero.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir i, producto Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "i <- 1; producto <- 0"
+      },
+      {
+        "num": 3,
+        "text": "Mientras (i <= 4) Hacer"
+      },
+      {
+        "num": 4,
+        "text": "   producto <- producto * i"
+      },
+      {
+        "num": 5,
+        "text": "   i <- i + 1"
+      },
+      {
+        "num": 6,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 2,
+    "bugExplanation": "El elemento neutro de la multiplicación en PSeInt es 1. Al inicializar en 0, 'producto * i' siempre mantendrá el valor 0.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "i <- 1; producto <- 1",
+        "isCorrect": true,
+        "detail": "Inicializa el acumulador multiplicativo en 1 para conservar los factores."
+      },
+      {
+        "key": "B",
+        "code": "i <- 0; producto <- 0",
+        "isCorrect": false,
+        "detail": "Mantiene el cero como factor anulador en el algoritmo."
+      },
+      {
+        "key": "C",
+        "code": "i <- 1; producto <- -1",
+        "isCorrect": false,
+        "detail": "Altera el signo del producto arrojando -24."
+      }
+    ],
+    "correctedCode": "i <- 1; producto <- 1",
+    "trace": [
+      {
+        "step": "Base",
+        "memory": "i = 1, producto = 1",
+        "condition": "1 <= 4 (V)",
+        "output": "-"
+      },
+      {
+        "step": "Iter 1",
+        "memory": "producto = 1 * 1 = 1, i = 2",
+        "condition": "2 <= 4 (V)",
+        "output": "-"
+      },
+      {
+        "step": "Iter 2",
+        "memory": "producto = 1 * 2 = 2, i = 3",
+        "condition": "3 <= 4 (V)",
+        "output": "-"
+      },
+      {
+        "step": "Iter 3",
+        "memory": "producto = 2 * 3 = 6, i = 4",
+        "condition": "4 <= 4 (V)",
+        "output": "-"
+      },
+      {
+        "step": "Iter 4",
+        "memory": "producto = 6 * 4 = 24, i = 5",
+        "condition": "5 <= 4 (F)",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "round": 4,
+    "title": "Error de Frontera (Off-By-One)",
+    "filename": "imprimir_1_a_5.psc",
+    "objective": "Imprimir la serie correlativa de números del 1 al 5 inclusive.",
+    "anomaly": "El bucle se detiene antes de tiempo y solo imprime hasta el 4 por usar menor estricto.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir cont Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "cont <- 1"
+      },
+      {
+        "num": 3,
+        "text": "Mientras (cont < 5) Hacer"
+      },
+      {
+        "num": 4,
+        "text": "   Escribir cont"
+      },
+      {
+        "num": 5,
+        "text": "   cont <- cont + 1"
+      },
+      {
+        "num": 6,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "La condición 'cont < 5' se vuelve Falsa cuando 'cont' vale 5, impidiendo imprimir el 5 requerido.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "Mientras (cont = 5) Hacer",
+        "isCorrect": false,
+        "detail": "El ciclo no inicia al evaluar 1 = 5 como Falso."
+      },
+      {
+        "key": "B",
+        "code": "Mientras (cont > 5) Hacer",
+        "isCorrect": false,
+        "detail": "Condición invertida que aborta de entrada."
+      },
+      {
+        "key": "C",
+        "code": "Mientras (cont <= 5) Hacer",
+        "isCorrect": true,
+        "detail": "Usa '<=' para permitir que el 5 se procese e imprima."
+      }
+    ],
+    "correctedCode": "Mientras (cont <= 5) Hacer",
+    "trace": [
+      {
+        "step": "cont = 1..4",
+        "memory": "Imprime 1, 2, 3, 4",
+        "condition": "cont <= 5 (V)",
+        "output": "1, 2, 3, 4"
+      },
+      {
+        "step": "cont = 5",
+        "memory": "Imprime 5, luego cont = 6",
+        "condition": "5 <= 5 (VERDADERO)",
+        "output": "5"
+      },
+      {
+        "step": "cont = 6",
+        "memory": "Termina el ciclo",
+        "condition": "6 <= 5 (FALSO)",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "round": 4,
+    "title": "Filtro de Números Impares Invertido",
+    "filename": "sumar_solo_impares.psc",
+    "objective": "Sumar únicamente los números impares entre 1 y 6 (1 + 3 + 5 = 9).",
+    "anomaly": "El algoritmo está sumando los números pares (2 + 4 + 6 = 12) por condición de módulo errónea.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir x, suma_impares Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "x <- 1; suma_impares <- 0"
+      },
+      {
+        "num": 3,
+        "text": "Mientras (x <= 6) Hacer"
+      },
+      {
+        "num": 4,
+        "text": "   Si (x MOD 2 = 0) Entonces"
+      },
+      {
+        "num": 5,
+        "text": "      suma_impares <- suma_impares + x"
+      },
+      {
+        "num": 6,
+        "text": "   FinSi"
+      },
+      {
+        "num": 7,
+        "text": "   x <- x + 1"
+      },
+      {
+        "num": 8,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 4,
+    "bugExplanation": "En PSeInt, 'x MOD 2 = 0' detecta los números pares. Para impares se debe usar 'x MOD 2 <> 0' o '= 1'.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "Si (x MOD 2 = 2) Entonces",
+        "isCorrect": false,
+        "detail": "El residuo de dividir entre 2 jamás puede ser 2."
+      },
+      {
+        "key": "B",
+        "code": "Si (x MOD 2 <> 0) Entonces",
+        "isCorrect": true,
+        "detail": "Filtra exactamente los impares cuyo residuo al dividir por 2 es 1."
+      },
+      {
+        "key": "C",
+        "code": "Si (x / 2 = 1) Entonces",
+        "isCorrect": false,
+        "detail": "Solo evaluaría positivamente cuando x valga 2."
+      }
+    ],
+    "correctedCode": "   Si (x MOD 2 <> 0) Entonces",
+    "trace": [
+      {
+        "step": "x = 1",
+        "memory": "1 MOD 2 = 1 <> 0 (V) -> suma = 1",
+        "condition": "Impar sumado",
+        "output": "-"
+      },
+      {
+        "step": "x = 2",
+        "memory": "2 MOD 2 = 0 (F) -> suma = 1",
+        "condition": "Par ignorado",
+        "output": "-"
+      },
+      {
+        "step": "x = 3",
+        "memory": "3 MOD 2 = 1 (V) -> suma = 1 + 3 = 4",
+        "condition": "Impar sumado",
+        "output": "-"
+      },
+      {
+        "step": "x = 4",
+        "memory": "4 MOD 2 = 0 (F) -> suma = 4",
+        "condition": "Par ignorado",
+        "output": "-"
+      },
+      {
+        "step": "x = 5",
+        "memory": "5 MOD 2 = 1 (V) -> suma = 4 + 5 = 9",
+        "condition": "Impar sumado",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "round": 4,
+    "title": "Reinicio Indebido de Variable Dentro del Ciclo",
+    "filename": "reinicio_indebido.psc",
+    "objective": "Contar cuántas iteraciones superan el valor 10 (con i=1..5, i*3 supera 10 en i=4 e i=5; total: 2).",
+    "anomaly": "El contador 'mayores' se resetea a cero en cada vuelta del ciclo y nunca pasa de 1.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir i Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "i <- 1"
+      },
+      {
+        "num": 3,
+        "text": "Mientras (i <= 5) Hacer"
+      },
+      {
+        "num": 4,
+        "text": "   Definir mayores Como Entero; mayores <- 0"
+      },
+      {
+        "num": 5,
+        "text": "   Si (i * 3 > 10) Entonces"
+      },
+      {
+        "num": 6,
+        "text": "      mayores <- mayores + 1"
+      },
+      {
+        "num": 7,
+        "text": "   FinSi"
+      },
+      {
+        "num": 8,
+        "text": "   i <- i + 1"
+      },
+      {
+        "num": 9,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 4,
+    "bugExplanation": "Definir e inicializar acumuladores dentro de un ciclo Mientras borra el progreso en cada iteración. Debe ir antes del bucle.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "// Declarar e inicializar 'mayores <- 0' en la línea 1 fuera del ciclo",
+        "isCorrect": true,
+        "detail": "Mantiene la persistencia del contador durante todas las vueltas."
+      },
+      {
+        "key": "B",
+        "code": "mayores <- mayores - 1",
+        "isCorrect": false,
+        "detail": "Resta al contador empeorando la inconsistencia."
+      },
+      {
+        "key": "C",
+        "code": "Si (i * 3 <= 10) Entonces",
+        "isCorrect": false,
+        "detail": "Modifica la condición sin resolver el reseteo de la variable."
+      }
+    ],
+    "correctedCode": "// En Línea 1: Definir i, mayores Como Entero; mayores <- 0\n// En Línea 4: [Suprimida]",
+    "trace": [
+      {
+        "step": "i = 1..3",
+        "memory": "i*3 <= 9 -> no suma; mayores = 0",
+        "condition": "Falso",
+        "output": "-"
+      },
+      {
+        "step": "i = 4",
+        "memory": "4*3 = 12 > 10 -> mayores = 0 + 1 = 1",
+        "condition": "Verdadero",
+        "output": "-"
+      },
+      {
+        "step": "i = 5",
+        "memory": "5*3 = 15 > 10 -> mayores = 1 + 1 = 2",
+        "condition": "Verdadero",
+        "output": "-"
+      },
+      {
+        "step": "Fin",
+        "memory": "mayores = 2",
+        "condition": "Correcto",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "round": 4,
+    "title": "Búsqueda Lineal sin Freno Temprano",
+    "filename": "busqueda_lineal.psc",
+    "objective": "Detener el ciclo de búsqueda inmediatamente al encontrar el número 7.",
+    "anomaly": "El ciclo sigue ejecutándose innecesariamente hasta 100 después de haber hallado el número en n=7.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir n Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "Definir encontrado Como Logico"
+      },
+      {
+        "num": 3,
+        "text": "n <- 1; encontrado <- Falso"
+      },
+      {
+        "num": 4,
+        "text": "Mientras (n <= 100) Hacer"
+      },
+      {
+        "num": 5,
+        "text": "   Si (n = 7) Entonces"
+      },
+      {
+        "num": 6,
+        "text": "      encontrado <- Verdadero"
+      },
+      {
+        "num": 7,
+        "text": "   FinSi"
+      },
+      {
+        "num": 8,
+        "text": "   n <- n + 1"
+      },
+      {
+        "num": 9,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 4,
+    "bugExplanation": "Falta incorporar la bandera lógica 'encontrado' en la condición del ciclo: 'Mientras (n <= 100 Y encontrado = Falso)'.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "Mientras (n <= 100 O encontrado = Verdadero) Hacer",
+        "isCorrect": false,
+        "detail": "Vuelve el ciclo infinito una vez que encontrado sea Verdadero."
+      },
+      {
+        "key": "B",
+        "code": "Mientras (n <= 100 Y encontrado = Falso) Hacer",
+        "isCorrect": true,
+        "detail": "Detiene el bucle en n=7 en cuanto 'encontrado' pasa a ser Verdadero."
+      },
+      {
+        "key": "C",
+        "code": "Mientras (n = 7) Hacer",
+        "isCorrect": false,
+        "detail": "No iniciaría porque n arranca en 1."
+      }
+    ],
+    "correctedCode": "Mientras (n <= 100 Y encontrado = Falso) Hacer",
+    "trace": [
+      {
+        "step": "n = 1..6",
+        "memory": "encontrado = Falso",
+        "condition": "n <= 100 Y Falso = Falso (V)",
+        "output": "-"
+      },
+      {
+        "step": "n = 7",
+        "memory": "encontrado <- Verdadero, n = 8",
+        "condition": "7 = 7 (V)",
+        "output": "-"
+      },
+      {
+        "step": "Evaluación siguiente",
+        "memory": "n=8 <= 100 Y Verdadero = Falso",
+        "condition": "FALSO -> FRENA",
+        "output": "-"
+      },
+      {
+        "step": "Optimización",
+        "memory": "Ahorro de 93 iteraciones en memoria",
+        "condition": "-",
+        "output": "-"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "round": 5,
+    "title": "Tarifa Fraccionada de Parqueadero",
+    "filename": "tarifa_parqueadero.psc",
+    "objective": "Cobrar $5000 las primeras 2 horas y $3000 por cada hora extra (para 4 horas = $16000).",
+    "anomaly": "El algoritmo cobra $22000 en lugar de $16000 porque multiplica las 4 horas completas por 3000.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir horas, total Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "horas <- 4; total <- 0"
+      },
+      {
+        "num": 3,
+        "text": "Si (horas <= 2) Entonces"
+      },
+      {
+        "num": 4,
+        "text": "   total <- horas * 5000"
+      },
+      {
+        "num": 5,
+        "text": "SiNo"
+      },
+      {
+        "num": 6,
+        "text": "   total <- (2 * 5000) + (horas * 3000)"
+      },
+      {
+        "num": 7,
+        "text": "FinSi"
+      }
+    ],
+    "bugLine": 6,
+    "bugExplanation": "En las horas extras se debe cobrar únicamente el excedente: '(horas - 2) * 3000', no el total de horas.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "total <- (horas * 5000) + (2 * 3000)",
+        "isCorrect": false,
+        "detail": "Sobrecarga la tarifa base cobrando todas las horas a $5000."
+      },
+      {
+        "key": "B",
+        "code": "total <- (2 * 5000) - (horas * 3000)",
+        "isCorrect": false,
+        "detail": "Resta dinero en vez de sumar las horas adicionales."
+      },
+      {
+        "key": "C",
+        "code": "total <- (2 * 5000) + ((horas - 2) * 3000)",
+        "isCorrect": true,
+        "detail": "Resta las 2 horas base ya cobradas: 10000 + (2 * 3000) = 16000."
+      }
+    ],
+    "correctedCode": "   total <- (2 * 5000) + ((horas - 2) * 3000)",
+    "trace": [
+      {
+        "step": "Entrada",
+        "memory": "horas = 4, total = 0",
+        "condition": "4 <= 2 (Falso)",
+        "output": "-"
+      },
+      {
+        "step": "Base 2h",
+        "memory": "2 * 5000 = 10000",
+        "condition": "Tarifa plana",
+        "output": "-"
+      },
+      {
+        "step": "Extras 2h",
+        "memory": "(4 - 2) * 3000 = 6000",
+        "condition": "Excedente",
+        "output": "-"
+      },
+      {
+        "step": "Total",
+        "memory": "10000 + 6000 = 16000",
+        "condition": "total <- 16000",
+        "output": "16000"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "round": 5,
+    "title": "Liquidación con Descuento Comercial",
+    "filename": "descuento_compra.psc",
+    "objective": "Si la compra supera $100000, descontar el 10% (para $120000 se debe pagar $108000).",
+    "anomaly": "El cliente termina pagando solo el monto del descuento ($12000) en lugar del total neto.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir compra, total_pagar Como Real"
+      },
+      {
+        "num": 2,
+        "text": "compra <- 120000.0; total_pagar <- 0.0"
+      },
+      {
+        "num": 3,
+        "text": "Si (compra > 100000.0) Entonces"
+      },
+      {
+        "num": 4,
+        "text": "   total_pagar <- compra * 0.10"
+      },
+      {
+        "num": 5,
+        "text": "SiNo"
+      },
+      {
+        "num": 6,
+        "text": "   total_pagar <- compra"
+      },
+      {
+        "num": 7,
+        "text": "FinSi"
+      }
+    ],
+    "bugLine": 4,
+    "bugExplanation": "'compra * 0.10' es la rebaja aplicada. El saldo a cobrar es 'compra - (compra * 0.10)' o 'compra * 0.90'.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "total_pagar <- compra - (compra * 0.10)",
+        "isCorrect": true,
+        "detail": "Resta el 10% del total: 120000 - 12000 = 108000."
+      },
+      {
+        "key": "B",
+        "code": "total_pagar <- compra / 0.10",
+        "isCorrect": false,
+        "detail": "Multiplica por 10 inflando la factura a 1.2 millones."
+      },
+      {
+        "key": "C",
+        "code": "total_pagar <- compra + 0.10",
+        "isCorrect": false,
+        "detail": "Suma diez centavos a la factura sin calcular porcentaje."
+      }
+    ],
+    "correctedCode": "   total_pagar <- compra - (compra * 0.10)",
+    "trace": [
+      {
+        "step": "Factura",
+        "memory": "compra = 120000.0",
+        "condition": "120000 > 100000 (V)",
+        "output": "-"
+      },
+      {
+        "step": "10% dto",
+        "memory": "120000 * 0.10 = 12000.0",
+        "condition": "Rebaja",
+        "output": "-"
+      },
+      {
+        "step": "Neto pagar",
+        "memory": "120000 - 12000 = 108000.0",
+        "condition": "total_pagar <- 108000.0",
+        "output": "108000.0"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "round": 5,
+    "title": "Cálculo Matemático del Factorial",
+    "filename": "calculo_factorial.psc",
+    "objective": "Calcular el factorial del número 4 (4! = 4 * 3 * 2 * 1 = 24).",
+    "anomaly": "El resultado arroja 0 debido a un elemento neutro de multiplicación nulo en la inicialización.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir n, fact, i Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "n <- 4; fact <- 0; i <- 1"
+      },
+      {
+        "num": 3,
+        "text": "Mientras (i <= n) Hacer"
+      },
+      {
+        "num": 4,
+        "text": "   fact <- fact * i"
+      },
+      {
+        "num": 5,
+        "text": "   i <- i + 1"
+      },
+      {
+        "num": 6,
+        "text": "FinMientras"
+      }
+    ],
+    "bugLine": 2,
+    "bugExplanation": "La variable acumuladora de factorial 'fact' debe inicializarse en 1 (0 * cualquier factor da 0).",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "n <- 4; fact <- 0; i <- 0",
+        "isCorrect": false,
+        "detail": "Mantiene el cero como factor anulador en el cálculo."
+      },
+      {
+        "key": "B",
+        "code": "n <- 0; fact <- 4; i <- 1",
+        "isCorrect": false,
+        "detail": "Destruye el valor objetivo de n dejándolo en cero."
+      },
+      {
+        "key": "C",
+        "code": "n <- 4; fact <- 1; i <- 1",
+        "isCorrect": true,
+        "detail": "Inicializa 'fact' en 1 para permitir multiplicaciones consecutivas válidas."
+      }
+    ],
+    "correctedCode": "n <- 4; fact <- 1; i <- 1",
+    "trace": [
+      {
+        "step": "Base",
+        "memory": "n = 4, fact = 1, i = 1",
+        "condition": "1 <= 4 (V)",
+        "output": "-"
+      },
+      {
+        "step": "i = 1",
+        "memory": "fact = 1 * 1 = 1, i = 2",
+        "condition": "2 <= 4 (V)",
+        "output": "-"
+      },
+      {
+        "step": "i = 2",
+        "memory": "fact = 1 * 2 = 2, i = 3",
+        "condition": "3 <= 4 (V)",
+        "output": "-"
+      },
+      {
+        "step": "i = 3",
+        "memory": "fact = 2 * 3 = 6, i = 4",
+        "condition": "4 <= 4 (V)",
+        "output": "-"
+      },
+      {
+        "step": "i = 4",
+        "memory": "fact = 6 * 4 = 24, i = 5",
+        "condition": "5 <= 4 (F)",
+        "output": "24"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "round": 5,
+    "title": "Permutación Circular de Tres Variables",
+    "filename": "intercambio_tres_variables.psc",
+    "objective": "Rotar tres valores en anillo: 'a' toma 'b' (2), 'b' toma 'c' (3), y 'c' toma 'a' (1).",
+    "anomaly": "La variable 'c' termina valiendo 2 en vez de 1 porque toma el valor ya alterado de 'a'.",
+    "code": [
+      {
+        "num": 1,
+        "text": "Definir a, b, c Como Entero"
+      },
+      {
+        "num": 2,
+        "text": "a <- 1; b <- 2; c <- 3"
+      },
+      {
+        "num": 3,
+        "text": "a <- b"
+      },
+      {
+        "num": 4,
+        "text": "b <- c"
+      },
+      {
+        "num": 5,
+        "text": "c <- a"
+      }
+    ],
+    "bugLine": 3,
+    "bugExplanation": "Se sobreescribe 'a' antes de haber guardado su valor original (1) en una variable auxiliar.",
+    "surgicalOptions": [
+      {
+        "key": "A",
+        "code": "c <- b; b <- a; a <- c",
+        "isCorrect": false,
+        "detail": "Genera colisión de memoria con pérdidas de datos."
+      },
+      {
+        "key": "B",
+        "code": "Definir aux Como Entero; aux <- a; a <- b; b <- c; c <- aux",
+        "isCorrect": true,
+        "detail": "Respalda 'a' en 'aux' antes de que 'a' mute a 2, permitiendo que 'c' reciba 1."
+      },
+      {
+        "key": "C",
+        "code": "a <- c; b <- b; c <- a",
+        "isCorrect": false,
+        "detail": "Sobreescribe 'a' con 'c' omitiendo el valor de 'b'."
+      }
+    ],
+    "correctedCode": "Definir aux Como Entero; aux <- a\na <- b\nb <- c\nc <- aux",
+    "trace": [
+      {
+        "step": "Inicio",
+        "memory": "a = 1, b = 2, c = 3",
+        "condition": "-",
+        "output": "-"
+      },
+      {
+        "step": "Respaldo",
+        "memory": "aux <- 1",
+        "condition": "aux <- a",
+        "output": "-"
+      },
+      {
+        "step": "Paso 1",
+        "memory": "a <- 2",
+        "condition": "a <- b",
+        "output": "-"
+      },
+      {
+        "step": "Paso 2",
+        "memory": "b <- 3",
+        "condition": "b <- c",
+        "output": "-"
+      },
+      {
+        "step": "Paso 3",
+        "memory": "c <- 1",
+        "condition": "c <- aux",
+        "output": "a=2, b=3, c=1"
+      }
+    ]
+  }
+];
+
+    const TEAMS = [
+      { name: "EQUIPO 2", badgeClass: "team-2-badge", color: "var(--team-2)", score: 0, hits: 0, falsePositives: 0, totalAsked: 0, comodinCooldown: 0 },
+      { name: "EQUIPO 3", badgeClass: "team-3-badge", color: "var(--team-3)", score: 0, hits: 0, falsePositives: 0, totalAsked: 0, comodinCooldown: 0 },
+      { name: "EQUIPO 4", badgeClass: "team-4-badge", color: "var(--team-4)", score: 0, hits: 0, falsePositives: 0, totalAsked: 0, comodinCooldown: 0 }
+    ];
+
+    let isPracticeMode = false;
+
+    const PRACTICE_CHALLENGE = {
+      id: 0,
+      round: "PRUEBA",
+      title: "Ronda de Calentamiento: Suma Simple de Dos Números",
+      objective: "Calcular la suma exacta de dos números (a = 5, b = 3; resultado esperado: 8).",
+      anomaly: "El programa arroja 2 en lugar de 8 porque resta en vez de sumar.",
+      code: [
+        { num: 1, text: "Definir a, b, total Como Entero" },
+        { num: 2, text: "a <- 5; b <- 3" },
+        { num: 3, text: "total <- a - b" },
+        { num: 4, text: "Escribir total" }
+      ],
+      bugLine: 3,
+      bugExplanation: "En la línea 3 se aplicó el operador de resta '-' en vez de la suma '+'. La operación 5 - 3 da 2.",
+      surgicalOptions: [
+        { key: "A", code: "total <- a + b", isCorrect: true, detail: "Corrige el operador a suma (+), arrojando 5 + 3 = 8." },
+        { key: "B", code: "total <- a * b", isCorrect: false, detail: "Multiplica los valores dando 15 en vez de 8." },
+        { key: "C", code: "total <- a - b + 0", isCorrect: false, detail: "Mantiene la resta sin solucionar el cálculo." }
+      ],
+      correctedCode: "total <- a + b",
+      trace: [
+        { step: "Inicialización", memory: "a = 5, b = 3", condition: "-", output: "-" },
+        { step: "Suma corregida", memory: "total <- 5 + 3 = 8", condition: "Operador +", output: "-" },
+        { step: "Salida estándar", memory: "total = 8", condition: "-", output: "8" }
+      ]
+    };
+
+    let currentQIndex = 0;
+    let timerSeconds = 45;
+    let timerTotal = 45;
+    let timerInterval = null;
+    let isPaused = false;
+    let isGameStarted = false;
+    let isAudioMuted = false;
+    let comodinUsedThisTurn = false;
+    let transitionInterval = null;
+
+    // Fases del Reto: 'TARGETING' (Buscando línea) | 'SURGICAL' (Eligiendo parche) | 'FINISHED' (Resuelto)
+    let challengePhase = 'TARGETING';
+    let lineAttemptsLeft = 2;
+    let roundPenalty = 0; // -20 si cometió 1 falso positivo
+
+    const STATE_KEY = 'code_sniper_live_state';
+    const COMODIN_COOLDOWN_TURNS = 2;
+
+    /* Persistencia en LocalStorage */
+    function saveTournamentState() {
+      try {
+        const state = {
+          currentQIndex,
+          teams: TEAMS.map(t => ({
+            score: t.score,
+            hits: t.hits,
+            falsePositives: t.falsePositives,
+            totalAsked: t.totalAsked,
+            comodinCooldown: t.comodinCooldown
+          }))
+        };
+        localStorage.setItem(STATE_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    function restoreTournamentState() {
+      try {
+        const raw = localStorage.getItem(STATE_KEY);
+        if (!raw) return false;
+        const state = JSON.parse(raw);
+        if (state && typeof state.currentQIndex === 'number') {
+          currentQIndex = Math.min(state.currentQIndex, CHALLENGES_DB.length - 1);
+          if (Array.isArray(state.teams)) {
+            state.teams.forEach((st, idx) => {
+              if (TEAMS[idx]) {
+                TEAMS[idx].score = st.score || 0;
+                TEAMS[idx].hits = st.hits || 0;
+                TEAMS[idx].falsePositives = st.falsePositives || 0;
+                TEAMS[idx].totalAsked = st.totalAsked || 0;
+                TEAMS[idx].comodinCooldown = st.comodinCooldown || 0;
+              }
+            });
+          }
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    function clearTournamentState() {
+      try {
+        localStorage.removeItem(STATE_KEY);
+      } catch (e) {}
+    }
+
+    /* Web Audio API Synthesizer */
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playBeep(freq, duration, type = 'sine', volume = 0.15) {
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(volume, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function soundTargetLock() {
+      try {
+        if (isAudioMuted) return;
+        playBeep(440, 0.08, 'sine', 0.2);
+        setTimeout(() => playBeep(880, 0.2, 'triangle', 0.25), 90);
+      } catch (e) {}
+    }
+
+    function soundFalsePositive() {
+      try {
+        if (isAudioMuted) return;
+        playBeep(260, 0.15, 'sawtooth', 0.2);
+        setTimeout(() => playBeep(200, 0.25, 'sawtooth', 0.22), 120);
+      } catch (e) {}
+    }
+
+    function soundSuccess() {
+      try {
+        if (isAudioMuted) return;
+        playBeep(523.25, 0.12, 'triangle', 0.2); // C5
+        setTimeout(() => playBeep(659.25, 0.15, 'triangle', 0.2), 100); // E5
+        setTimeout(() => playBeep(783.99, 0.35, 'triangle', 0.25), 200); // G5
+      } catch (e) {}
+    }
+
+    function soundWrong() {
+      try {
+        if (isAudioMuted) return;
+        playBeep(220, 0.2, 'sawtooth', 0.2);
+        setTimeout(() => playBeep(174.61, 0.35, 'sawtooth', 0.22), 150);
+      } catch (e) {}
+    }
+
+    function soundComodin() {
+      try {
+        if (isAudioMuted) return;
+        playBeep(440, 0.1, 'sine', 0.15);
+        setTimeout(() => playBeep(554.37, 0.1, 'sine', 0.15), 80);
+        setTimeout(() => playBeep(659.25, 0.2, 'sine', 0.2), 160);
+      } catch (e) {}
+    }
+
+    /* Rotación de Relevos */
+    function getTurnInfo(qIdx) {
+      const teamIdx = qIdx % 3;
+      const memberNum = (Math.floor(qIdx / 3) % 4) + 1;
+      return { teamIdx, memberNum };
+    }
+
+    /* Carga de Reto en Pantalla */
+    function loadChallenge(index, isPreparingOnly = false) {
+      clearInterval(timerInterval);
+      isPaused = false;
+      comodinUsedThisTurn = false;
+      challengePhase = 'TARGETING';
+      lineAttemptsLeft = 2;
+      roundPenalty = 0;
+
+      const item = CHALLENGES_DB[index];
+      const turn = getTurnInfo(index);
+      const activeTeam = TEAMS[turn.teamIdx];
+
+      if (!isPreparingOnly) {
+        activeTeam.totalAsked++;
+        if (activeTeam.comodinCooldown > 0) {
+          activeTeam.comodinCooldown--;
+        }
+      }
+
+      // Actualizar Header
+      const roundBadgeEl = document.getElementById('roundBadge');
+      if (roundBadgeEl) {
+        roundBadgeEl.innerHTML = 'RONDA <span id="currentRoundText">' + item.round + '</span>/5';
+      }
+      const roundTextEl = document.getElementById('currentRoundText');
+      if (roundTextEl) {
+        roundTextEl.textContent = item.round;
+      }
+      const teamBadge = document.getElementById('activeTeamBadge');
+      teamBadge.className = 'badge-team-relay ' + activeTeam.badgeClass;
+      document.getElementById('activeTeamName').textContent = activeTeam.name;
+      document.getElementById('activeMemberName').textContent = 'INTEGRANTE ' + turn.memberNum;
+
+      // Actualizar destaque en Scoreboard
+      document.getElementById('scoreCard0').classList.toggle('active-turn', turn.teamIdx === 0);
+      document.getElementById('scoreCard1').classList.toggle('active-turn', turn.teamIdx === 1);
+      document.getElementById('scoreCard2').classList.toggle('active-turn', turn.teamIdx === 2);
+
+      // Tab y Diagnóstico
+            document.getElementById('diagObjective').textContent = item.objective;
+      document.getElementById('diagAnomaly').textContent = item.anomaly;
+
+      // Ocultar panel quirúrgico
+      const surgPanel = document.getElementById('surgicalPanel');
+      surgPanel.classList.remove('show');
+      document.getElementById('surgicalOptionsGrid').innerHTML = '';
+
+      // Resetear indicador de intentos
+      document.getElementById('sniperPhaseHint').textContent = 'FASE 1: HAZ CLIC DIRECTO SOBRE LA LÍNEA DEFECTUOSA CON EL MOUSE';
+      document.getElementById('sniperAttemptsText').innerHTML = '<svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span>INTENTOS: 2 / 2</span>';
+
+      // Renderizar líneas de código clickeables
+      const list = document.getElementById('codeLinesList');
+      list.innerHTML = '';
+      item.code.forEach(line => {
+        const row = document.createElement('div');
+        row.className = 'code-row';
+        row.id = 'codeRow_' + line.num;
+        row.setAttribute('data-line', line.num);
+
+        row.innerHTML = 
+          '<svg class="icon reticle-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>' +
+          '<span class="line-num">' + line.num + '</span>' +
+          '<span class="line-text">' + syntaxHighlight(line.text) + '</span>' +
+          '<span class="line-badge-feedback" id="lineBadge_' + line.num + '">SANA</span>';
+
+        row.onclick = () => handleLineTarget(line.num);
+        list.appendChild(row);
+      });
+
+      // Reset de botones del moderador
+      document.getElementById('btnShowTrace').disabled = true;
+      document.getElementById('btnNextTurn').disabled = true;
+      document.getElementById('btnPause').disabled = false;
+      document.getElementById('comodinToast').classList.remove('active');
+
+      updateSystemStatus('INSPECCIÓN EN VIVO: APUNTA AL BUG', false);
+
+      // Iniciar Temporizador
+      timerTotal = 45;
+      timerSeconds = timerTotal;
+      updateTimerDisplay();
+      updateComodinButtonUI();
+
+      if (isGameStarted && !isPreparingOnly) {
+        startTimer();
+      }
+      if (isGameStarted) {
+        saveTournamentState();
+      }
+    }
+
+    /* Resaltador de Sintaxis Robusto de Paso Único para PSeInt */
+    function syntaxHighlight(str) {
+      const tokenRegex = /(\/\/.*$)|(".*?"|'.*?')|(\b(?:Definir|definir|DEFINIR|Como|como|COMO|Entero|entero|ENTERO|Real|real|REAL|Cadena|cadena|CADENA|Caracter|caracter|CARACTER|Logico|logico|LOGICO|Si|si|SI|Entonces|entonces|ENTONCES|SiNo|sino|SINO|FinSi|finsi|FIN_SI|FINSI|Mientras|mientras|MIENTRAS|Hacer|hacer|HACER|FinMientras|finmientras|FIN_MIENTRAS|FINMIENTRAS|Para|Hasta|Con|Paso|FinPara|Repetir|Verdadero|verdadero|Falso|falso|MOD|mod|Y|O|NO|no)\b)|(\b(?:Escribir|escribir|ESCRIBIR|Leer|leer|LEER)\b)|(\b\d+(?:\.\d+)?\b)|(<-|<>|==|!=|<=|>=|=|\+|\-|\*|\/|%)|([a-zA-Z_]\w*)|([^\s\w])/g;
+
+      return str.replace(tokenRegex, (match, comment, string, keyword, fn, number, operator) => {
+        const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        if (comment) return '<span class="token-comment">' + escape(comment) + '</span>';
+        if (string) return '<span class="token-str">' + escape(string) + '</span>';
+        if (keyword) return '<span class="token-kw">' + escape(keyword) + '</span>';
+        if (fn) return '<span class="token-fn">' + escape(fn) + '</span>';
+        if (number) return '<span class="token-num">' + escape(number) + '</span>';
+        if (operator) return '<span class="token-op">' + escape(operator) + '</span>';
+        return escape(match);
+      });
+    }
+
+    /* ==========================================================================
+       DISPARO / SELECCIÓN DE LÍNEA (FASE 1)
+       ========================================================================== */
+    function handleLineTarget(selectedLine) {
+      if (challengePhase !== 'TARGETING') return;
+
+      if (isPracticeMode) {
+        if (selectedLine === PRACTICE_CHALLENGE.bugLine) {
+          challengePhase = 'SURGICAL';
+          const targetRow = document.getElementById('codeRow_' + selectedLine);
+          if (targetRow) targetRow.classList.add('target-locked');
+
+          const badge = document.getElementById('lineBadge_' + selectedLine);
+          if (badge) {
+            badge.textContent = 'BUG LOCALIZADO';
+            badge.style.display = 'inline-block';
+          }
+
+          soundTargetLock();
+          updateSystemStatus('¡LÍNEA ' + selectedLine + ' ACERTADA! PASO 2: ELIGE LA CORRECCIÓN', false);
+
+          const instrP = document.getElementById('practiceInstruction');
+          if (instrP) {
+            instrP.innerHTML = '<strong style="color: var(--emerald-accent);">[OBJETIVO LOCALIZADO] ¡Bug en Línea 3!</strong> Ahora haz clic en la <strong>Opción A (<code>total &lt;- a + b</code>)</strong> en el panel inferior.';
+          }
+
+          deploySurgicalPanel(PRACTICE_CHALLENGE);
+        } else {
+          soundFalsePositive();
+          const row = document.getElementById('codeRow_' + selectedLine);
+          if (row) {
+            row.classList.add('false-positive');
+            const badge = document.getElementById('lineBadge_' + selectedLine);
+            if (badge) {
+              badge.textContent = 'LÍNEA SANA';
+              badge.style.display = 'inline-block';
+            }
+            setTimeout(() => row.classList.remove('false-positive'), 1200);
+          }
+          const instrFP = document.getElementById('practiceInstruction');
+          if (instrFP) {
+            instrFP.innerHTML = '<strong style="color: var(--coral-accent);">[LÍNEA SANA]</strong> En el torneo esto resta -20 PTS y cuesta 1 intento. Haz clic en la Línea 3 para continuar.';
+          }
+          updateSystemStatus('FALSO POSITIVO EN LÍNEA ' + selectedLine + '. ¡BUSCA LA LÍNEA 3!', true);
+        }
+        return;
+      }
+
+      const item = CHALLENGES_DB[currentQIndex];
+      const turn = getTurnInfo(currentQIndex);
+      const activeTeam = TEAMS[turn.teamIdx];
+      const selectedRow = document.getElementById('codeRow_' + selectedLine);
+
+      if (selectedLine === item.bugLine) {
+        // ¡TARGET LOCKED! ACIERTO DE LÍNEA
+        soundTargetLock();
+        challengePhase = 'SURGICAL';
+
+        selectedRow.classList.add('target-locked');
+        const badge = document.getElementById('lineBadge_' + selectedLine);
+        badge.textContent = '¡BUG LOCALIZADO!';
+        badge.style.display = 'inline-block';
+
+        document.getElementById('sniperPhaseHint').textContent = 'FASE 2: ¡LÍNEA ' + selectedLine + ' CONFIRMADA! ELIGE LA CORRECCIÓN QUIRÚRGICA';
+        document.getElementById('sniperAttemptsText').innerHTML = '<span style="color: var(--emerald-accent); font-weight: 800;">OBJETIVO EN LA MIRA</span>';
+
+        updateSystemStatus('¡BUG LOCALIZADO EN LÍNEA ' + selectedLine + '! ELIGE EL PARCHE', false);
+        deploySurgicalPanel(item);
+      } else {
+        // FALSO POSITIVO: LÍNEA SANA
+        soundFalsePositive();
+        activeTeam.falsePositives++;
+        lineAttemptsLeft--;
+        roundPenalty = 20;
+
+        selectedRow.classList.add('false-positive');
+        const badge = document.getElementById('lineBadge_' + selectedLine);
+        badge.textContent = 'LÍNEA SANA';
+        badge.style.display = 'inline-block';
+
+        setTimeout(() => {
+          selectedRow.classList.remove('false-positive');
+        }, 1200);
+
+        if (lineAttemptsLeft > 0) {
+          document.getElementById('sniperAttemptsText').innerHTML = '<span style="color: var(--coral-accent); font-weight: 800;">1 INTENTO RESTANTE (-20 PTS)</span>';
+          updateSystemStatus('FALSO POSITIVO EN LÍNEA ' + selectedLine + ' (-20 PTS). ÚLTIMO INTENTO', true);
+        } else {
+          // SE AGOTARON LOS INTENTOS
+          handleTargetFailed('INTENTOS AGOTADOS');
+        }
+      }
+    }
+
+    /* Fallo de objetivo (0 intentos o tiempo) */
+    function handleTargetFailed(reason) {
+      challengePhase = 'FINISHED';
+      clearInterval(timerInterval);
+
+      const item = CHALLENGES_DB[currentQIndex];
+      const bugRow = document.getElementById('codeRow_' + item.bugLine);
+      if (bugRow) {
+        bugRow.classList.add('target-locked');
+        const badge = document.getElementById('lineBadge_' + item.bugLine);
+        badge.textContent = 'BUG AQUÍ (REVELADO)';
+        badge.style.display = 'inline-block';
+      }
+
+      // Deshabilitar todas las líneas
+      document.querySelectorAll('.code-row').forEach(r => r.classList.add('disabled'));
+
+      soundWrong();
+      updateSystemStatus('RETO FALLIDO: ' + reason + ' (BUG EN LÍNEA ' + item.bugLine + ')', true);
+      finishChallenge();
+    }
+
+    /* ==========================================================================
+       DESPLIEGUE DEL PANEL QUIRÚRGICO (FASE 2)
+       ========================================================================== */
+    function deploySurgicalPanel(item) {
+      const surgPanel = document.getElementById('surgicalPanel');
+      const grid = document.getElementById('surgicalOptionsGrid');
+      document.getElementById('surgicalLineReference').textContent = 'LÍNEA ' + item.bugLine + ': ' + item.code.find(c => c.num === item.bugLine).text;
+      grid.innerHTML = '';
+
+      item.surgicalOptions.forEach((opt, optIdx) => {
+        const card = document.createElement('div');
+        card.className = 'surgical-card';
+        card.id = 'surgCard_' + opt.key;
+        card.onclick = () => handleSurgicalSelect(optIdx);
+
+        card.innerHTML = 
+          '<div class="surgical-card-top">' +
+            '<div class="surgical-key">' + opt.key + '</div>' +
+            '<div class="surgical-code">' + escapeHtml(opt.code) + '</div>' +
+          '</div>' +
+          '<div class="surgical-desc">' + opt.detail + '</div>';
+
+        grid.appendChild(card);
+      });
+
+      surgPanel.classList.add('show');
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    /* Selección de Parche Quirúrgico */
+    function handleSurgicalSelect(optionIdx) {
+      if (challengePhase !== 'SURGICAL') return;
+      challengePhase = 'FINISHED';
+      clearInterval(timerInterval);
+
+      if (isPracticeMode) {
+        const chosenOpt = PRACTICE_CHALLENGE.surgicalOptions[optionIdx];
+        const chosenCard = document.getElementById('surgCard_' + chosenOpt.key);
+
+        PRACTICE_CHALLENGE.surgicalOptions.forEach(opt => {
+          const c = document.getElementById('surgCard_' + opt.key);
+          if (c) c.classList.add('disabled');
+        });
+
+        if (chosenOpt.isCorrect) {
+          if (chosenCard) chosenCard.classList.add('correct');
+          soundSuccess();
+          const instrS = document.getElementById('practiceInstruction');
+          if (instrS) {
+            instrS.innerHTML = '<strong style="color: var(--emerald-accent);">[PARCHE QUIRÚRGICO APLICADO]</strong> Ya conoces la dinámica. Haz clic en <strong>"Iniciar Torneo Oficial"</strong> para comenzar.';
+          }
+          updateSystemStatus('¡PRÁCTICA COMPLETADA EXITOSAMENTE! LISTO PARA EL TORNEO', false);
+        } else {
+          if (chosenCard) chosenCard.classList.add('incorrect');
+          const correctOpt = PRACTICE_CHALLENGE.surgicalOptions.find(o => o.isCorrect);
+          const correctCard = document.getElementById('surgCard_' + correctOpt.key);
+          if (correctCard) correctCard.classList.add('correct');
+          soundWrong();
+          const instrS = document.getElementById('practiceInstruction');
+          if (instrS) {
+            instrS.innerHTML = '<strong style="color: var(--coral-accent);">[PARCHE INCORRECTO]</strong> La corrección era la Opción A (<code>total &lt;- a + b</code>). Haz clic en "Iniciar Torneo Oficial" cuando estés listo.';
+          }
+          updateSystemStatus('PARCHE FALLIDO EN PRUEBA. LA RESPUESTA ERA OPCIÓN ' + correctOpt.key, true);
+        }
+
+        document.getElementById('btnShowTrace').disabled = false;
+        return;
+      }
+
+      const item = CHALLENGES_DB[currentQIndex];
+      const turn = getTurnInfo(currentQIndex);
+      const activeTeam = TEAMS[turn.teamIdx];
+      const chosenOpt = item.surgicalOptions[optionIdx];
+
+      // Deshabilitar tarjetas quirúrgicas
+      item.surgicalOptions.forEach(opt => {
+        const c = document.getElementById('surgCard_' + opt.key);
+        if (c) c.classList.add('disabled');
+      });
+
+      const chosenCard = document.getElementById('surgCard_' + chosenOpt.key);
+
+      if (chosenOpt.isCorrect) {
+        // PARCHE CORRECTO
+        chosenCard.classList.add('correct');
+        const pointsEarned = 100 - roundPenalty;
+        activeTeam.score += pointsEarned;
+        activeTeam.hits++;
+
+        soundSuccess();
+        updateSystemStatus('¡PARCHE QUIRÚRGICO EXITOSO! (+' + pointsEarned + ' PTS PARA ' + activeTeam.name + ')', false);
+      } else {
+        // PARCHE INCORRECTO
+        chosenCard.classList.add('incorrect');
+        const correctOpt = item.surgicalOptions.find(o => o.isCorrect);
+        const correctCard = document.getElementById('surgCard_' + correctOpt.key);
+        if (correctCard) correctCard.classList.add('correct');
+
+        soundWrong();
+        updateSystemStatus('PARCHE FALLIDO (LA CORRECCIÓN ERA OPCIÓN ' + correctOpt.key + ')', true);
+      }
+
+      updateScoreboardUI();
+      finishChallenge();
+    }
+
+    /* Finalización del Reto (Habilitar Análisis y Siguiente) */
+    function finishChallenge() {
+      challengePhase = 'FINISHED';
+      document.getElementById('btnShowTrace').disabled = false;
+      document.getElementById('btnNextTurn').disabled = false;
+      document.getElementById('btnPause').disabled = true;
+      document.getElementById('btnComodin').disabled = true;
+      saveTournamentState();
+    }
+
+    /* Temporizador Agotado */
+    function handleTimeExpired() {
+      if (challengePhase === 'FINISHED') return;
+      handleTargetFailed('TIEMPO AGOTADO (45s)');
+    }
+
+    /* ==========================================================================
+       AVANCE DE TURNO Y RELEVO DE 3 SEGUNDOS
+       ========================================================================== */
+    function proceedToNextQuestion() {
+      if (challengePhase !== 'FINISHED') return;
+
+      if (currentQIndex >= CHALLENGES_DB.length - 1) {
+        showPodium();
+        return;
+      }
+
+      const nextIndex = currentQIndex + 1;
+      const nextTurn = getTurnInfo(nextIndex);
+      const nextTeam = TEAMS[nextTurn.teamIdx];
+
+      const overlay = document.getElementById('transitionOverlay');
+      const teamLabel = document.getElementById('transTeamName');
+      const memberLabel = document.getElementById('transMemberName');
+      const countLabel = document.getElementById('transSeconds');
+
+      teamLabel.textContent = nextTeam.name;
+      teamLabel.style.color = nextTeam.color;
+      memberLabel.textContent = 'PASA: INTEGRANTE ' + nextTurn.memberNum;
+
+      overlay.classList.add('show');
+
+      let remaining = 3;
+      countLabel.textContent = remaining;
+
+      clearInterval(transitionInterval);
+      transitionInterval = setInterval(() => {
+        remaining--;
+        if (remaining > 0) {
+          countLabel.textContent = remaining;
+          playBeep(440, 0.05, 'sine', 0.1);
+        } else {
+          clearInterval(transitionInterval);
+          overlay.classList.remove('show');
+          currentQIndex = nextIndex;
+          loadChallenge(currentQIndex, false);
+        }
+      }, 1000);
+    }
+
+    function skipTransitionNow() {
+      if (transitionInterval) {
+        clearInterval(transitionInterval);
+        document.getElementById('transitionOverlay').classList.remove('show');
+        currentQIndex++;
+        loadChallenge(currentQIndex, false);
+      }
+    }
+
+    /* ==========================================================================
+       TEMPORIZADOR CIRCULAR SVG
+       ========================================================================== */
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!isPaused) {
+          timerSeconds--;
+          updateTimerDisplay();
+
+          if (timerSeconds <= 0) {
+            clearInterval(timerInterval);
+            handleTimeExpired();
+          }
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const digits = document.getElementById('timerDigits');
+      const progress = document.getElementById('timerProgress');
+      const container = document.getElementById('timerContainer');
+
+      digits.textContent = timerSeconds;
+
+      const circumference = 2 * Math.PI * 25; // r=25 -> ~157.08
+      const fraction = Math.max(0, timerSeconds / timerTotal);
+      const offset = circumference * (1 - fraction);
+      progress.style.strokeDashoffset = offset;
+
+      container.classList.remove('warning', 'critical');
+      if (timerSeconds <= 10 && timerSeconds > 5) {
+        container.classList.add('warning');
+        playBeep(600, 0.03, 'sine', 0.04);
+      } else if (timerSeconds <= 5 && timerSeconds > 0) {
+        container.classList.add('critical');
+        playBeep(880, 0.05, 'square', 0.06);
+      }
+    }
+
+    function togglePauseTimer() {
+      if (challengePhase === 'FINISHED') return;
+      isPaused = !isPaused;
+      const pauseLabel = document.getElementById('pauseLabel');
+      const pauseIcon = document.getElementById('pauseIcon');
+
+      if (isPaused) {
+        pauseLabel.textContent = 'Reanudar';
+        pauseIcon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+        updateSystemStatus('TEMPORIZADOR EN PAUSA POR EL MODERADOR', false);
+      } else {
+        pauseLabel.textContent = 'Pausar';
+        pauseIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+        updateSystemStatus('INSPECCIÓN EN VIVO: APUNTA AL BUG', false);
+      }
+      document.getElementById('statusDot').classList.toggle('paused', isPaused);
+    }
+
+    /* Comodín de Consulta */
+    function triggerComodin() {
+      if (challengePhase === 'FINISHED' || comodinUsedThisTurn) return;
+
+      const turn = getTurnInfo(currentQIndex);
+      const activeTeam = TEAMS[turn.teamIdx];
+
+      if (activeTeam.comodinCooldown > 0) {
+        alert('COMODÍN NO DISPONIBLE: ' + activeTeam.name + ' debe esperar ' + activeTeam.comodinCooldown + ' turno(s) propio(s) para reutilizarlo.');
+        return;
+      }
+      if (timerSeconds <= 10) {
+        alert('COMODÍN NO DISPONIBLE: Se requieren más de 10 segundos en el reloj para activar la consulta.');
+        return;
+      }
+
+      comodinUsedThisTurn = true;
+      activeTeam.comodinCooldown = COMODIN_COOLDOWN_TURNS;
+      isPaused = true;
+      soundComodin();
+
+      const toast = document.getElementById('comodinToast');
+      toast.classList.add('active');
+      updateSystemStatus('COMODÍN ACTIVO: 10s DE CONSULTA CON EL EQUIPO', false);
+
+      let consultSecs = 10;
+      const consultInterval = setInterval(() => {
+        consultSecs--;
+        if (consultSecs <= 0) {
+          clearInterval(consultInterval);
+          toast.classList.remove('active');
+          isPaused = false;
+          updateSystemStatus('CONSULTA FINALIZADA: REANUDANDO INSPECCIÓN', false);
+        }
+      }, 1000);
+
+      updateComodinButtonUI();
+    }
+
+    function updateComodinButtonUI() {
+      const turn = getTurnInfo(currentQIndex);
+      const activeTeam = TEAMS[turn.teamIdx];
+      const btn = document.getElementById('btnComodin');
+      const label = document.getElementById('comodinLabel');
+
+      if (activeTeam.comodinCooldown > 0) {
+        btn.disabled = true;
+        label.textContent = 'Espera (' + activeTeam.comodinCooldown + ' t)';
+      } else {
+        btn.disabled = false;
+        label.textContent = 'Comodín Consulta';
+      }
+    }
+
+    /* Actualizar UI Marcador */
+    function updateScoreboardUI() {
+      document.getElementById('score0').textContent = TEAMS[0].score;
+      document.getElementById('score1').textContent = TEAMS[1].score;
+      document.getElementById('score2').textContent = TEAMS[2].score;
+    }
+
+    function adjustScore(teamIdx, amount) {
+      TEAMS[teamIdx].score = Math.max(0, TEAMS[teamIdx].score + amount);
+      updateScoreboardUI();
+      saveTournamentState();
+    }
+
+    function updateSystemStatus(text, isDanger) {
+      document.getElementById('statusMessage').textContent = text;
+      const dot = document.getElementById('statusDot');
+      dot.className = 'status-indicator' + (isDanger ? ' finished' : '');
+    }
+
+    /* Modal de Análisis / Prueba de Escritorio */
+    function openTraceModal() {
+      const item = isPracticeMode ? PRACTICE_CHALLENGE : CHALLENGES_DB[currentQIndex];
+      document.getElementById('traceCorrectCodeText').textContent = item.correctedCode;
+      document.getElementById('traceAnalysisText').textContent = item.bugExplanation;
+
+      const tbody = document.getElementById('traceTableBody');
+      tbody.innerHTML = '';
+      item.trace.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = 
+          '<td><strong>' + row.step + '</strong></td>' +
+          '<td style="color: var(--cyan-accent);">' + row.memory + '</td>' +
+          '<td>' + row.condition + '</td>' +
+          '<td style="color: var(--emerald-accent); font-weight: 700;">' + row.output + '</td>';
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('traceModalBackdrop').classList.add('open');
+    }
+
+    function closeTraceModal() {
+      document.getElementById('traceModalBackdrop').classList.remove('open');
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target.id === 'traceModalBackdrop') {
+        closeTraceModal();
+      }
+    }
+
+    /* Podio Final */
+    function showPodium() {
+      const ranked = [...TEAMS].sort((a, b) => b.score - a.score);
+
+      // Rank 1
+      document.getElementById('podiumName1').textContent = ranked[0].name;
+      document.getElementById('podiumName1').style.color = ranked[0].color;
+      document.getElementById('podiumScore1').textContent = ranked[0].score + ' PTS';
+      const p1 = ranked[0].totalAsked > 0 ? Math.round((ranked[0].hits / ranked[0].totalAsked) * 100) : 0;
+      document.getElementById('podiumStats1').textContent = 'Efectividad: ' + ranked[0].hits + '/' + ranked[0].totalAsked + ' (' + p1 + '%) • Falsos: ' + ranked[0].falsePositives;
+
+      // Rank 2
+      document.getElementById('podiumName2').textContent = ranked[1].name;
+      document.getElementById('podiumName2').style.color = ranked[1].color;
+      document.getElementById('podiumScore2').textContent = ranked[1].score + ' PTS';
+      const p2 = ranked[1].totalAsked > 0 ? Math.round((ranked[1].hits / ranked[1].totalAsked) * 100) : 0;
+      document.getElementById('podiumStats2').textContent = 'Efectividad: ' + ranked[1].hits + '/' + ranked[1].totalAsked + ' (' + p2 + '%) • Falsos: ' + ranked[1].falsePositives;
+
+      // Rank 3
+      document.getElementById('podiumName3').textContent = ranked[2].name;
+      document.getElementById('podiumName3').style.color = ranked[2].color;
+      document.getElementById('podiumScore3').textContent = ranked[2].score + ' PTS';
+      const p3 = ranked[2].totalAsked > 0 ? Math.round((ranked[2].hits / ranked[2].totalAsked) * 100) : 0;
+      document.getElementById('podiumStats3').textContent = 'Efectividad: ' + ranked[2].hits + '/' + ranked[2].totalAsked + ' (' + p3 + '%) • Falsos: ' + ranked[2].falsePositives;
+
+      document.getElementById('podiumOverlay').classList.add('show');
+      clearTournamentState();
+    }
+
+    function restartTournament() {
+      if (confirm('¿Deseas reiniciar el torneo y poner todos los puntajes en cero?')) {
+        clearTournamentState();
+        TEAMS.forEach(t => {
+          t.score = 0;
+          t.hits = 0;
+          t.falsePositives = 0;
+          t.totalAsked = 0;
+          t.comodinCooldown = 0;
+        });
+        updateScoreboardUI();
+        document.getElementById('podiumOverlay').classList.remove('show');
+        isGameStarted = false;
+        currentQIndex = 0;
+        const welcome = document.getElementById('welcomeOverlay');
+        if (welcome) {
+          welcome.classList.remove('hidden');
+          const startText = document.getElementById('btnStartText');
+          if (startText) startText.textContent = 'INICIAR TORNEO EN VIVO';
+        }
+        loadChallenge(0, true);
+      }
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    /* Inicio y Reanudación del Torneo */
+    /* ==========================================================================
+       CONTROL DE LA RONDA DE PRUEBA (TUTORIAL INTERACTIVO)
+       ========================================================================== */
+    function startInteractivePractice() {
+      isPracticeMode = true;
+      isGameStarted = false;
+      clearInterval(timerInterval);
+
+      // Ocultar bienvenida y mostrar barra tutorial
+      const welcome = document.getElementById('welcomeOverlay');
+      if (welcome) welcome.classList.add('hidden');
+      const guideBar = document.getElementById('practiceGuideBar');
+      if (guideBar) guideBar.style.display = 'flex';
+
+      const instr = document.getElementById('practiceInstruction');
+      if (instr) {
+        instr.innerHTML = 'Examina el código: <strong>haz clic con el mouse en la Línea 3 (<code>total &lt;- a - b</code>)</strong> para fijar el objetivo.';
+      }
+
+      loadPracticeChallenge();
+    }
+
+    function loadPracticeChallenge() {
+      challengePhase = 'TARGETING';
+      lineAttemptsLeft = 2;
+      roundPenalty = 0;
+
+      // Encabezado en modo prueba
+      const roundBadgePractice = document.getElementById('roundBadge');
+      if (roundBadgePractice) {
+        roundBadgePractice.innerHTML = 'RONDA <span id="currentRoundText">PRUEBA</span>';
+      }
+      const teamBadge = document.getElementById('activeTeamBadge');
+      teamBadge.className = 'badge-team-relay team-2-badge';
+      document.getElementById('activeTeamName').textContent = 'MODO ENTRENAMIENTO';
+      document.getElementById('activeMemberName').textContent = 'ESTUDIANTE EN PC';
+
+      // Scoreboard desmarcado
+      document.getElementById('scoreCard0').classList.remove('active-turn');
+      document.getElementById('scoreCard1').classList.remove('active-turn');
+      document.getElementById('scoreCard2').classList.remove('active-turn');
+
+      // Temporizador en modo demostración
+      document.getElementById('timerDigits').textContent = 'DEMO';
+      const progress = document.getElementById('timerProgress');
+      if (progress) {
+        progress.style.strokeDashoffset = '0';
+        progress.style.stroke = 'var(--amber-accent)';
+      }
+
+      // Diagnóstico
+      document.getElementById('diagObjective').textContent = PRACTICE_CHALLENGE.objective;
+      document.getElementById('diagAnomaly').textContent = PRACTICE_CHALLENGE.anomaly;
+
+      // Reset panel quirúrgico
+      const surgPanel = document.getElementById('surgicalPanel');
+      surgPanel.classList.remove('show');
+      document.getElementById('surgicalOptionsGrid').innerHTML = '';
+
+      document.getElementById('sniperPhaseHint').textContent = 'RONDA DE PRUEBA: APUNTA DIRECTO A LA LÍNEA DEL BUG';
+      document.getElementById('sniperAttemptsText').innerHTML = '<span>INTENTOS: 2 / 2 (DEMO)</span>';
+
+      // Renderizar líneas clickeables
+      const list = document.getElementById('codeLinesList');
+      list.innerHTML = '';
+      PRACTICE_CHALLENGE.code.forEach(line => {
+        const row = document.createElement('div');
+        row.className = 'code-row';
+        row.id = 'codeRow_' + line.num;
+        row.setAttribute('data-line', line.num);
+
+        row.innerHTML = 
+          '<svg class="icon reticle-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>' +
+          '<span class="line-num">' + line.num + '</span>' +
+          '<span class="line-text">' + syntaxHighlight(line.text) + '</span>' +
+          '<span class="line-badge-feedback" id="lineBadge_' + line.num + '">SANA</span>';
+
+        row.onclick = () => handleLineTarget(line.num);
+        list.appendChild(row);
+      });
+
+      document.getElementById('btnShowTrace').disabled = true;
+      document.getElementById('btnNextTurn').disabled = true;
+      document.getElementById('btnPause').disabled = true;
+      document.getElementById('btnComodin').disabled = true;
+      document.getElementById('comodinToast').classList.remove('active');
+
+      updateSystemStatus('RONDA DE PRUEBA: HAZ CLIC EN LA LÍNEA CON EL ERROR', false);
+    }
+
+    function exitPracticeMode() {
+      isPracticeMode = false;
+      const guideBar = document.getElementById('practiceGuideBar');
+      if (guideBar) guideBar.style.display = 'none';
+      const welcome = document.getElementById('welcomeOverlay');
+      if (welcome) welcome.classList.remove('hidden');
+      loadChallenge(currentQIndex || 0, true);
+    }
+
+    function startGameTournament(resetProgress = false) {
+      isPracticeMode = false;
+      const guideBar = document.getElementById('practiceGuideBar');
+      if (guideBar) guideBar.style.display = 'none';
+      if (resetProgress) {
+        currentQIndex = 0;
+        TEAMS.forEach(t => {
+          t.score = 0;
+          t.hits = 0;
+          t.falsePositives = 0;
+          t.totalAsked = 0;
+          t.comodinCooldown = 0;
+        });
+        updateScoreboardUI();
+        clearTournamentState();
+      }
+      isGameStarted = true;
+      document.getElementById('welcomeOverlay').classList.add('hidden');
+      loadChallenge(currentQIndex, false);
+      saveTournamentState();
+    }
+
+
+
+    /* ==========================================================================
+       ESCUCHADORES DE TECLADO
+       ========================================================================== */
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toUpperCase();
+
+      // Evitar recarga accidental con F5 o Ctrl+R en proyector
+      if (e.key === 'F5' || (e.ctrlKey && key === 'R')) {
+        e.preventDefault();
+        saveTournamentState();
+        if (confirm('¿Deseas recargar la página? La partida está guardada y continuará donde quedó.')) {
+          location.reload();
+        }
+        return;
+      }
+
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+
+
+      // Pantalla de Bienvenida: Enter arranca el torneo
+      if (!isGameStarted && !isPracticeMode) {
+        if (key === 'ENTER') {
+          startGameTournament(true);
+        }
+        return;
+      }
+
+      // Modal de análisis: Esc o T lo cierran
+      const isTraceOpen = document.getElementById('traceModalBackdrop').classList.contains('open');
+      if (isTraceOpen) {
+        if (key === 'ESCAPE' || key === 'T') {
+          closeTraceModal();
+        }
+        return;
+      }
+
+      // Transición: Enter salta
+      const isTransOpen = document.getElementById('transitionOverlay').classList.contains('show');
+      if (isTransOpen) {
+        if (key === 'ENTER') {
+          skipTransitionNow();
+        }
+        return;
+      }
+
+      // Fase 1 (Targeting): soporte de números para apuntar línea (1 al 9)
+      if (challengePhase === 'TARGETING') {
+        const num = parseInt(e.key, 10);
+        if (!isNaN(num) && num >= 1 && num <= 9) {
+          handleLineTarget(num);
+          return;
+        }
+      }
+
+      // Fase 2 (Surgical): atajos A, B, C para elegir parche
+      if (challengePhase === 'SURGICAL') {
+        if (key === 'A') { handleSurgicalSelect(0); return; }
+        if (key === 'B') { handleSurgicalSelect(1); return; }
+        if (key === 'C') { handleSurgicalSelect(2); return; }
+      }
+
+      // Atajo [Espacio]: Pausar / Reanudar
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePauseTimer();
+        return;
+      }
+
+      // Atajo [H]: Comodín
+      if (key === 'H') {
+        triggerComodin();
+        return;
+      }
+
+      // Atajo [T]: Ver Análisis
+      if (key === 'T') {
+        if (challengePhase === 'FINISHED') {
+          openTraceModal();
+        }
+        return;
+      }
+
+      // Atajo [Enter]: Siguiente turno
+      if (key === 'ENTER') {
+        if (challengePhase === 'FINISHED') {
+          proceedToNextQuestion();
+        }
+        return;
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (isGameStarted) {
+        saveTournamentState();
+      }
+    });
+
+    // Inicialización al cargar la página (SIEMPRE MUESTRA BIENVENIDA PRIMERO)
+    function initializeApp() {
+      const restored = restoreTournamentState();
+      updateScoreboardUI();
+
+      isGameStarted = false;
+      clearInterval(timerInterval);
+
+      const welcome = document.getElementById('welcomeOverlay');
+      if (welcome) {
+        welcome.classList.remove('hidden');
+      }
+
+      const startText = document.getElementById('btnStartText');
+      if (startText) {
+        startText.textContent = 'INICIAR TORNEO EN VIVO';
+      }
+
+      loadChallenge(currentQIndex || 0, true);
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+      initializeApp();
+    }
+  </script>
+</body>
+</html>
